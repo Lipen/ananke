@@ -750,6 +750,25 @@ impl Bdd {
         }
     }
 
+    /// Compare two variables by their level in the variable ordering.
+    ///
+    /// Terminal variables are considered greater than non-terminal variables.
+    /// Both variables must be in the ordering; panics otherwise.
+    pub fn var_cmp(&self, var1: Var, var2: Var) -> Ordering {
+        if var1 == var2 {
+            return Ordering::Equal;
+        }
+        if var1.is_terminal() {
+            return Ordering::Greater;
+        }
+        if var2.is_terminal() {
+            return Ordering::Less;
+        }
+        let level1 = self.get_level(var1).unwrap();
+        let level2 = self.get_level(var2).unwrap();
+        level1.cmp(&level2)
+    }
+
     /// Compares two variables by their level in the variable ordering.
     ///
     /// Returns the variable that should appear *first* (at a lower level/higher in the tree).
@@ -2087,7 +2106,7 @@ impl Bdd {
             .map(|l| l.into())
             .filter(|lit| self.get_level(lit.var()).is_some())
             .collect();
-        lits.sort_by_key(|lit| self.get_level(lit.var()).unwrap());
+        lits.sort_unstable_by(|a, b| self.var_cmp(a.var(), b.var()));
         let mut cache = HashMap::new();
         self.cofactor_cube_(f, &lits, &mut cache)
     }
@@ -2532,15 +2551,7 @@ impl Bdd {
         //   (old_i < old_j) => (new_i < new_j)
         let mut sorted_pairs: Vec<_> = permutation.iter().collect();
         // Sort by level of the OLD variables
-        sorted_pairs.sort_by(|&(old_a, _), &(old_b, _)| {
-            if self.var_precedes(*old_a, *old_b) {
-                std::cmp::Ordering::Less
-            } else if self.var_precedes(*old_b, *old_a) {
-                std::cmp::Ordering::Greater
-            } else {
-                std::cmp::Ordering::Equal
-            }
-        });
+        sorted_pairs.sort_unstable_by(|&(old_a, _), &(old_b, _)| self.var_cmp(*old_a, *old_b));
 
         for i in 0..sorted_pairs.len() {
             for j in i + 1..sorted_pairs.len() {
@@ -2675,7 +2686,7 @@ impl Bdd {
         if vars_sorted.is_empty() {
             return f;
         }
-        vars_sorted.sort_by_key(|&v| self.get_level(v).unwrap());
+        vars_sorted.sort_unstable_by(|a, b| self.var_cmp(*a, *b));
         let mut cache = Cache::new(16);
         self.exists_(f, &vars_sorted, 0, &mut cache)
     }
@@ -2841,7 +2852,7 @@ impl Bdd {
         if vars_sorted.is_empty() {
             return self.apply_and(u, v);
         }
-        vars_sorted.sort_by_key(|&v| self.get_level(v).unwrap());
+        vars_sorted.sort_unstable_by(|a, b| self.var_cmp(*a, *b));
         let mut cache = Cache::new(16);
         self.rel_product_(u, v, &vars_sorted, 0, &mut cache)
     }
@@ -3085,8 +3096,8 @@ impl Bdd {
         }
 
         let mut result: Vec<Var> = vars.into_iter().collect();
-        // Sort by level in the ordering (not by variable ID)
-        result.sort_unstable_by_key(|v| self.get_level(*v).map(|l| l.index()).unwrap_or(usize::MAX));
+        // Sort by level in the ordering
+        result.sort_unstable_by(|a, b| self.var_cmp(*a, *b));
         result
     }
 
