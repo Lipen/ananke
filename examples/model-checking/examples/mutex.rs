@@ -38,22 +38,27 @@ use ananke_bdd::bdd::Bdd;
 use ananke_bdd::reference::Ref;
 use model_checking::*;
 
-// ============================================================================
-// MAIN
-// ============================================================================
+fn header(s: &str) {
+    println!("{}", s);
+    println!("{}", "─".repeat(s.len()));
+    println!();
+}
 
 fn main() {
-    println!("\n=== Mutual Exclusion: From Broken to Correct ===");
-    println!("=== BDD-Based Symbolic Model Checking Tutorial ===\n");
+    println!("════════════════════════════════════════════");
+    println!("  Mutual Exclusion: From Broken to Correct  ");
+    println!("════════════════════════════════════════════");
+    println!();
 
     // Run all three implementations and compare results
     println!("This example compares three mutex implementations:\n");
     println!("  1. Naive Mutex     - No synchronization (BROKEN)");
     println!("  2. Flag-based      - Intent flags only (BROKEN - deadlock)");
-    println!("  3. Peterson's      - Flags + turn (CORRECT)\n");
+    println!("  3. Peterson's      - Flags + turn (CORRECT)");
+    println!();
 
     // --- Implementation 1: Naive (broken) ---
-    println!("\n>>> IMPLEMENTATION 1: Naive Mutex (No Synchronization)\n");
+    header("IMPLEMENTATION 1: Naive Mutex (No Synchronization)");
 
     println!("Pseudocode:");
     println!("  Process 0              │  Process 1");
@@ -67,7 +72,7 @@ fn main() {
     print_results("Naive Mutex", &naive_results);
 
     // --- Implementation 2: Flag-based (deadlock) ---
-    println!("\n>>> IMPLEMENTATION 2: Flag-Based Mutex (Intent Flags Only)\n");
+    header("IMPLEMENTATION 2: Flag-Based Mutex (Intent Flags Only)");
 
     println!("Pseudocode:");
     println!("  Process 0              │  Process 1");
@@ -84,7 +89,7 @@ fn main() {
     print_results("Flag-Based Mutex", &flag_results);
 
     // --- Implementation 3: Peterson's Algorithm (correct) ---
-    println!("\n>>> IMPLEMENTATION 3: Peterson's Algorithm (Correct)\n");
+    header("IMPLEMENTATION 3: Peterson's Algorithm (Correct)");
 
     println!("Pseudocode:");
     println!("  Process 0                      │  Process 1");
@@ -102,29 +107,29 @@ fn main() {
     print_results("Peterson's Algorithm", &peterson_results);
 
     // --- Summary comparison ---
-    println!("\n=== SUMMARY ===\n");
-    println!("Property              │ Naive  │ Flags  │ Peterson");
-    println!("──────────────────────┼────────┼────────┼────────────");
+    header("SUMMARY");
+    println!(" Property             │ Naive │ Flags │ Peterson");
+    println!("──────────────────────┼───────┼───────┼──────────");
     println!(
-        "Mutual Exclusion      │   {}    │   {}    │   {}",
+        " Mutual Exclusion     │   {}   │   {}   │    {}",
         status_icon(naive_results.mutex),
         status_icon(flag_results.mutex),
         status_icon(peterson_results.mutex)
     );
     println!(
-        "Deadlock-Free         │   {}    │   {}    │   {}",
+        " Deadlock-Free        │   {}   │   {}   │    {}",
         status_icon(naive_results.deadlock_free),
         status_icon(flag_results.deadlock_free),
         status_icon(peterson_results.deadlock_free)
     );
     println!(
-        "P0 Can Enter          │   {}    │   {}    │   {}",
+        " P0 Can Enter         │   {}   │   {}   │    {}",
         status_icon(naive_results.p0_reachable),
         status_icon(flag_results.p0_reachable),
         status_icon(peterson_results.p0_reachable)
     );
     println!(
-        "P1 Can Enter          │   {}    │   {}    │   {}",
+        " P1 Can Enter         │   {}   │   {}   │    {}",
         status_icon(naive_results.p1_reachable),
         status_icon(flag_results.p1_reachable),
         status_icon(peterson_results.p1_reachable)
@@ -132,13 +137,13 @@ fn main() {
     println!("\nLegend: ✓ = property holds, ✗ = property violated\n");
 
     println!("Conclusion:");
-    println!("  • Naive mutex has NO synchronization → immediate mutual exclusion violation");
-    println!("  • Flag-based adds intent signaling but can deadlock (both wait forever)");
-    println!("  • Peterson's algorithm uses a 'turn' variable to break symmetry");
-    println!("  • The turn acts as a tie-breaker: whoever sets it last defers to the other\n");
+    println!("  - Naive mutex has NO synchronization → immediate mutual exclusion violation");
+    println!("  - Flag-based adds intent signaling but can deadlock (both wait forever)");
+    println!("  - Peterson's algorithm uses a 'turn' variable to break symmetry");
+    println!("  - The turn acts as a tie-breaker: whoever sets it last defers to the other\n");
 
     println!("BDD model checking explored ALL possible interleavings exhaustively,");
-    println!("guaranteeing correctness (or finding counterexamples) in milliseconds.\n");
+    println!("guaranteeing correctness (or finding counterexamples) in milliseconds.");
 }
 
 // ============================================================================
@@ -184,7 +189,9 @@ fn print_results(name: &str, results: &MutexResults) {
     // Show counterexample if mutual exclusion is violated
     if !results.mutex {
         if let Some(ref cex) = results.counterexample {
-            println!("\n  *** COUNTEREXAMPLE: Mutual Exclusion Violation ***\n");
+            println!();
+            println!("  *** COUNTEREXAMPLE: Mutual Exclusion Violation ***");
+            println!();
 
             // Add annotations and visualize
             let cex = cex.clone().with_annotations();
@@ -204,27 +211,34 @@ fn print_results(name: &str, results: &MutexResults) {
             }
 
             // Explain what happened
-            println!("\n  Explanation:");
+            println!();
+            println!("  Explanation:");
             println!("    The trace shows both processes entering their critical sections");
             println!("    simultaneously (pc0=1 AND pc1=1), violating mutual exclusion.");
-            println!("\n    This happens because there's no synchronization mechanism to");
+            println!();
+            println!("    This happens because there's no synchronization mechanism to");
             println!("    prevent concurrent access to the shared resource.");
         }
     }
 
     // Show deadlock situation
     if !results.deadlock_free && results.mutex {
-        println!("\n  *** DEADLOCK DETECTED ***\n");
+        println!();
+        println!("  *** DEADLOCK DETECTED ***");
+        println!();
 
         println!("  Explanation:");
         println!("    Both processes can get stuck waiting for each other forever.");
         println!("    This happens when both set their flags simultaneously:");
         println!("      • P0 sees flag1=true, waits");
         println!("      • P1 sees flag0=true, waits");
-        println!("      • Neither can proceed → DEADLOCK\n");
+        println!("      • Neither can proceed → DEADLOCK");
+        println!();
         println!("    Peterson's algorithm solves this with a 'turn' variable that");
         println!("    breaks the symmetry: whoever writes 'turn' last will yield.");
     }
+
+    println!();
 }
 
 // ============================================================================

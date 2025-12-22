@@ -32,36 +32,44 @@ use std::rc::Rc;
 use ananke_bdd::bdd::Bdd;
 use model_checking::*;
 
+fn header(s: &str) {
+    println!("{}", s);
+    println!("{}", "─".repeat(s.len()));
+    println!();
+}
+
 fn main() {
-    println!("Traffic Light Controller");
-    println!("========================\n");
+    println!("══════════════════════════");
+    println!(" TRAFFIC LIGHT CONTROLLER ");
+    println!("══════════════════════════");
+    println!();
 
-    // -- Step 1: Create the Model --
-
-    println!("Step 1: Building the traffic light model...\n");
+    header("Problem Statement");
+    println!("Coordinate 2 traffic lights at a 4-way intersection");
+    println!();
+    println!("- NS light controls north-south traffic");
+    println!("- EW light controls east-west traffic");
+    println!("- Each light: Red → Yellow → Green → Red");
+    println!("- Lights operate in opposite phases");
+    println!();
+    println!("Requirements:");
+    println!("- Safety: Both lights never green simultaneously");
+    println!("- Liveness: Each direction eventually gets green");
+    println!("- Progress: Deterministic, 1 successor per state\n");
 
     let bdd = Rc::new(Bdd::default());
     let mut ts = TransitionSystem::new(bdd.clone());
 
-    // --
-    // STEP 2: State Encoding
-    // --
-    //
-    // Each light has 3 states: Red, Yellow, Green
-    // We need 2 bits to encode 3 values (2 bits can represent 4 values)
-    //
-    // Encoding:
-    //   00 (0) = Red
-    //   01 (1) = Yellow
-    //   10 (2) = Green
-    //   11 (3) = Invalid (not used)
-    //
-    // Variables:
-    //   ns0, ns1: North-South light state
-    //   ew0, ew1: East-West light state
-
-    println!("   State encoding (2 bits per light):");
-    println!("   - 00 = Red, 01 = Yellow, 10 = Green\n");
+    header("Model Construction");
+    println!("Variables: 4 Boolean (2 bits per light)");
+    println!("- NS0, NS1: north-south light");
+    println!("- EW0, EW1: east-west light");
+    println!();
+    println!("Encoding (2-bit):");
+    println!("- 00 = Red");
+    println!("- 01 = Yellow");
+    println!("- 10 = Green");
+    println!("- 11 = unused\n");
 
     let ns0 = Var::new("ns0"); // NS light, bit 0
     let ns1 = Var::new("ns1"); // NS light, bit 1
@@ -101,39 +109,22 @@ fn main() {
     let ew_yellow = bdd.apply_and(not_ew0, ew1_bdd); // 01
     let ew_green = bdd.apply_and(ew0_bdd, not_ew1); // 10
 
-    // --
-    // STEP 3: Initial State
-    // --
-    //
-    // Start with: NS = Red, EW = Green
-    // This represents one direction having right-of-way.
+    header("Initial State");
+    println!("NS=Red, EW=Green");
+    println!();
 
     let initial = bdd.apply_and(ns_red, ew_green);
     ts.set_initial(initial);
+    println!("Initial state BDD: {} nodes", bdd.count_nodes(&[initial]));
+    println!();
 
-    println!("   Initial state: NS=Red, EW=Green");
-    println!("   (East-West traffic has initial right-of-way)\n");
-
-    // --
-    // STEP 4: Transition Relation
-    // --
-    //
-    // The traffic light controller is DETERMINISTIC — each state has exactly
-    // one successor. The cycle is:
-    //
-    // State 1: NS=Red,    EW=Green  →  State 2
-    // State 2: NS=Red,    EW=Yellow →  State 3
-    // State 3: NS=Green,  EW=Red    →  State 4
-    // State 4: NS=Yellow, EW=Red    →  State 1
-    //
-    // This is a simple 4-state cycle.
-
-    println!("   Traffic light cycle (4 states):");
-    println!("   1: NS=Red,    EW=Green");
-    println!("   2: NS=Red,    EW=Yellow");
-    println!("   3: NS=Green,  EW=Red");
-    println!("   4: NS=Yellow, EW=Red");
-    println!("   (Then back to state 1)\n");
+    header("Transition System");
+    println!("Cycle: S1 → S2 → S3 → S4 → S1");
+    println!("- S1: NS=Red   (00), EW=Green  (10)");
+    println!("- S2: NS=Red   (00), EW=Yellow (01)");
+    println!("- S3: NS=Green (10), EW=Red    (00)");
+    println!("- S4: NS=Yellow(01), EW=Red    (00)");
+    println!();
 
     // Get next-state BDD variables
     let ns0_n = ts.var_manager().get_next(&ns0).unwrap();
@@ -179,11 +170,10 @@ fn main() {
     // Complete transition relation: disjunction of all transitions
     let transition = bdd.apply_or(bdd.apply_or(trans1, trans2), bdd.apply_or(trans3, trans4));
     ts.set_transition(transition);
+    println!("Transition relation BDD: {} nodes", bdd.count_nodes(&[transition]));
+    println!();
 
-    // --
-    // STEP 5: Define Atomic Propositions
-    // --
-
+    // Define Atomic Propositions
     ts.add_label("ns_red".to_string(), ns_red);
     ts.add_label("ns_yellow".to_string(), ns_yellow);
     ts.add_label("ns_green".to_string(), ns_green);
@@ -198,119 +188,72 @@ fn main() {
 
     let ts = Rc::new(ts);
 
-    // --
-    // STEP 6: Analyze State Space
-    // --
-
-    println!("Step 2: Analyzing state space...\n");
-
+    header("State Space Analysis");
     let reachable = ts.reachable();
     let state_count = ts.count_states(reachable);
 
-    println!("   Total variables: 4 (2 per light)");
-    println!("   Maximum possible states: 2^4 = 16");
+    println!("Variables: 4");
+    println!("Possible states: 2^4 = 16");
     if let Some(count) = state_count {
-        println!("   Reachable states: {}", count);
-
-        // IMPORTANT ASSERTION: Our model has exactly 4 reachable states!
-        // This confirms the controller cycles through exactly 4 configurations.
-        assert_eq!(count, 4, "Expected exactly 4 reachable states in the traffic light cycle");
-        println!("   ✓ ASSERTION PASSED: Exactly 4 states (as expected for 4-state cycle)\n");
+        println!("Reachable: {}", count);
+        assert_eq!(count, 4, "Expected exactly 4 reachable states");
     }
+    println!("Reachable BDD: {} nodes\n", bdd.count_nodes(&[reachable]));
 
-    // --
-    // STEP 7: CTL Model Checking
-    // --
-
-    println!("Step 3: Verifying CTL properties...\n");
+    header("CTL Model Checking");
 
     let checker = CtlChecker::new(ts.clone());
 
     // Property 1: AG safe — "Both lights never green simultaneously"
-
-    //
-    // This is THE critical safety property for traffic lights.
-    // If this fails, cars could crash!
-
+    println!("P1: AG safe (no collision)");
+    println!("- Safety property: both lights never green");
     let ag_safe = CtlFormula::atom("safe").ag();
     let safety_holds = checker.holds_initially(&ag_safe);
+    println!("  {}", if safety_holds { "✓ PASS" } else { "✗ FAIL" });
+    assert!(safety_holds, "CRITICAL: Both lights can be green simultaneously!");
+    println!();
 
-    println!("   Result: {}", if safety_holds { "✓ HOLDS" } else { "✗ VIOLATED" });
-
-    assert!(safety_holds, "CRITICAL SAFETY VIOLATION: Both lights can be green simultaneously!");
-    println!("   ✓ ASSERTION PASSED: Collision impossible\n");
-
-    // Property 2: AG (ns_green → AF ns_red) — "Green light eventually turns red"
-
-    //
-    // This ensures the controller makes progress and doesn't get stuck.
-
+    // Property 2: AG (ns_green → AF ns_red) — NS eventually stops being green (progress)
+    println!("P2: AG (ns_green → AF ns_red) (NS progress)");
+    println!("- Liveness property: green light eventually changes");
     let ns_progress = CtlFormula::atom("ns_green").implies(CtlFormula::atom("ns_red").af()).ag();
     let ns_progress_holds = checker.holds_initially(&ns_progress);
+    println!("  {}", if ns_progress_holds { "✓ PASS" } else { "✗ FAIL" });
+    assert!(ns_progress_holds, "NS green light could stay green forever!");
+    println!();
 
-    println!("   Result: {}", if ns_progress_holds { "✓ HOLDS" } else { "✗ VIOLATED" });
-
-    assert!(ns_progress_holds, "Progress violation: NS green light could stay green forever!");
-    println!("   ✓ ASSERTION PASSED: NS light eventually changes\n");
-
-    // Property 3: AG (ew_red → AF ew_green) — "Waiting traffic gets served"
-
-    //
-    // This is a fairness/liveness property: EW direction eventually gets green.
-
+    // Property 3: AG (ew_red → AF ew_green) — EW eventually becomes green (fairness)
+    println!("P3: AG (ew_red → AF ew_green) (EW fairness)");
+    println!("- Liveness property: waiting traffic gets served");
     let ew_fairness = CtlFormula::atom("ew_red").implies(CtlFormula::atom("ew_green").af()).ag();
     let ew_fairness_holds = checker.holds_initially(&ew_fairness);
+    println!("  {}", if ew_fairness_holds { "✓ PASS" } else { "✗ FAIL" });
+    assert!(ew_fairness_holds, "EW traffic could wait forever!");
+    println!();
 
-    println!("   Result: {}", if ew_fairness_holds { "✓ HOLDS" } else { "✗ VIOLATED" });
-
-    assert!(ew_fairness_holds, "Fairness violation: EW traffic could wait forever!");
-    println!("   ✓ ASSERTION PASSED: EW traffic will be served\n");
-
-    // Property 4: AG EF ns_green — "NS green is always eventually reachable"
-
-    //
-    // This confirms the system can always return to any state (no dead ends).
+    // Property 4: AG EF ns_green — NS green always eventually reachable (reversibility)
+    println!("P4: AG EF ns_green (reversibility)");
+    println!("- Liveness property: no dead-end states, cycles forever");
 
     let reversibility = CtlFormula::atom("ns_green").ef().ag();
     let reversibility_holds = checker.holds_initially(&reversibility);
+    println!("  {}", if reversibility_holds { "✓ PASS" } else { "✗ FAIL" });
+    assert!(reversibility_holds, "System has dead-end states!");
+    println!();
 
-    println!("   Result: {}", if reversibility_holds { "✓ HOLDS" } else { "✗ VIOLATED" });
-
-    assert!(reversibility_holds, "System has dead-end states that cannot reach NS green!");
-    println!("   ✓ ASSERTION PASSED: System cycles forever without getting stuck\n");
-
-    // --
-    // STEP 8: LTL Model Checking
-    // --
-    //
-    // LTL (Linear Temporal Logic) reasons about individual execution paths.
-    // Unlike CTL which has path quantifiers (A, E), LTL implicitly quantifies
-    // over ALL paths (like CTL's A operator).
-
-    println!("Step 4: Verifying LTL properties...\n");
+    header("LTL Model Checking");
 
     let ltl_checker = LtlChecker::new(ts.clone());
 
-    // Property 5: G (ns_green → F ns_red) — Same as Property 2, but in LTL
-
+    // Property 5: G (ns_green → F ns_red) — NS eventually stops being green (LTL version)
+    println!("P5: G (ns_green → F ns_red) (NS progress)");
+    println!("- LTL version of P2: for all execution paths");
     let ltl_progress = LtlFormula::atom("ns_green")
         .implies(LtlFormula::atom("ns_red").finally())
         .globally();
     let ltl_progress_holds = ltl_checker.holds_initially(&ltl_progress);
-
-    println!("  Result: {}", if ltl_progress_holds { "✓ HOLDS" } else { "✗ VIOLATED" });
-    // Note: LTL checker may give different results than CTL due to implementation
-    if ltl_progress_holds {
-        println!("  ✓ LTL confirms progress\n");
-    } else {
-        println!("  (LTL checker implementation may differ from CTL)\n");
-    }
-
-    // Property 6: G F ns_green
-    //
-    // "NS green occurs infinitely often" - repeated reachability
-
-    println!("--- Property 6: Infinite Recurrence (LTL) ---");
+    println!("  {}", if ltl_progress_holds { "✓ PASS" } else { "✗ FAIL" });
+    println!();
     println!("LTL: G F ns_green");
     println!("'NS green light occurs infinitely often'\n");
 
@@ -324,10 +267,7 @@ fn main() {
         println!("  (LTL result differs from expected)\n");
     }
 
-    // -- Summary --
-
-    println!("Summary");
-    println!("-------");
+    header("Summary");
     println!("  AG safe (no collision):             {}", if safety_holds { "✓" } else { "✗" });
     println!(
         "  AG (ns_green → AF ns_red):          {}",
@@ -347,6 +287,7 @@ fn main() {
     );
     println!("  G F ns_green [LTL]:                 {}", if gf_holds { "✓" } else { "✗" });
 
-    println!("\n✓ All assertions passed!");
+    println!();
+    println!("✓ All assertions passed!");
     println!("  Traffic light controller is SAFE and LIVE.\n");
 }

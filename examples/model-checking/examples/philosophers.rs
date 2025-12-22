@@ -43,9 +43,17 @@ use std::rc::Rc;
 use ananke_bdd::bdd::Bdd;
 use model_checking::*;
 
+fn header(s: &str) {
+    println!("{}", s);
+    println!("{}", "─".repeat(s.len()));
+    println!();
+}
+
 fn main() {
-    println!("Dining Philosophers - Concurrency Model Checking");
-    println!("=================================================\n");
+    println!("════════════════════════════════════════════════════");
+    println!("  Dining Philosophers - Concurrency Model Checking  ");
+    println!("════════════════════════════════════════════════════");
+    println!();
 
     // -- Step 1: Problem Setup --
 
@@ -105,6 +113,8 @@ fn main() {
     //
     // Everyone starts THINKING
 
+    println!("Initial state: All philosophers THINKING\n");
+
     let mut initial = bdd.one();
     for i in 0..n {
         // THINKING: ¬hungry ∧ ¬eating
@@ -112,8 +122,6 @@ fn main() {
         initial = bdd.apply_and(initial, thinking);
     }
     ts.set_initial(initial);
-
-    println!("Initial state: All philosophers THINKING\n");
 
     // -- Step 4: Transition Relation --
     //
@@ -176,7 +184,6 @@ fn main() {
     let transition = bdd.apply_and_many(transitions.into_iter());
     ts.set_transition(transition);
 
-    // --
     // -- Step 5: Define Labels --
 
     for i in 0..n {
@@ -202,8 +209,7 @@ fn main() {
 
     // -- Step 6: State Space Analysis --
 
-    println!("State Space Analysis");
-    println!("--------------------\n");
+    header("State Space Analysis");
 
     let reachable = ts.reachable();
     let state_count = ts.count_states(reachable);
@@ -219,14 +225,13 @@ fn main() {
 
     // -- Step 7: Verify Properties --
 
-    println!("Property Verification");
-    println!("---------------------\n");
+    header("Property Verification");
 
     // Property 1: EF deadlock
     //
     // Can the deadlock state be reached?
 
-    println!("--- Property 1: Deadlock Possibility ---");
+    println!("─── Property 1: Deadlock Possibility ───");
     println!("CTL: EF deadlock");
     println!("'Is there a path leading to deadlock?'\n");
 
@@ -249,7 +254,7 @@ fn main() {
 
     // Property 2: AG no_deadlock
 
-    println!("--- Property 2: Deadlock Freedom ---");
+    println!("─── Property 2: Deadlock Freedom ───");
     println!("CTL: AG no_deadlock");
     println!("'Is the system always deadlock-free?'\n");
 
@@ -267,7 +272,7 @@ fn main() {
 
     // Property 3: EF eating0
 
-    println!("--- Property 3: Eating Reachability ---");
+    println!("─── Property 3: Eating Reachability ───");
     println!("CTL: EF eating0");
     println!("'Can philosopher 0 eat?'\n");
 
@@ -280,7 +285,7 @@ fn main() {
 
     // Property 4: AG (hungry0 → EF eating0)
 
-    println!("--- Property 4: No Starvation (without fairness) ---");
+    println!("─── Property 4: No Starvation (without fairness) ───");
     println!("CTL: AG (hungry0 → EF eating0)");
     println!("'If P0 is hungry, can they eventually eat?'\n");
 
@@ -299,8 +304,7 @@ fn main() {
     // CTL without fairness can give misleading results for liveness.
     // FAIRNESS: "If hungry infinitely often, eats infinitely often"
 
-    println!("Fairness Analysis");
-    println!("-----------------\n");
+    header("Fairness Analysis");
 
     println!("  Without fairness, liveness can fail due to unrealistic schedulers.\n");
     println!("  STRONG FAIRNESS: If hungry infinitely often → eats infinitely often.\n");
@@ -313,7 +317,7 @@ fn main() {
 
     // Property 5: Fair AG no_deadlock
 
-    println!("--- Property 5: Deadlock Freedom (with fairness) ---");
+    println!("─── Property 5: Deadlock Freedom (with fairness) ───");
     println!("'Under fair scheduling, is system deadlock-free?'\n");
 
     let fair_ag_no_deadlock = fm.fair_ag(bdd.apply_not(deadlock));
@@ -329,14 +333,13 @@ fn main() {
 
     // -- Step 9: LTL Model Checking --
 
-    println!("LTL Model Checking");
-    println!("------------------\n");
+    header("LTL Model Checking");
 
     let ltl_checker = LtlChecker::new(ts.clone());
 
     // Property 6: G (hungry0 → F eating0)
 
-    println!("--- Property 6: No Starvation (LTL) ---");
+    println!("─── Property 6: No Starvation (LTL) ───");
     println!("LTL: G (hungry0 → F eating0)");
     println!("'On all paths, if P0 hungry, P0 eventually eats'\n");
 
@@ -354,8 +357,7 @@ fn main() {
 
     // -- Summary --
 
-    println!("Summary");
-    println!("-------");
+    header("Summary");
     println!("  Dining Philosophers: {} philosophers", n);
     println!(
         "  EF deadlock (possible?):            {}",

@@ -11,10 +11,17 @@ use std::rc::Rc;
 use ananke_bdd::bdd::Bdd;
 use model_checking::*;
 
+fn header(s: &str) {
+    println!("{}", s);
+    println!("{}", "─".repeat(s.len()));
+    println!();
+}
+
 fn main() {
-    println!("═══════════════════════════════════════════════════════════════════════════");
-    println!("          COUNTEREXAMPLE VISUALIZATION DEMONSTRATION");
-    println!("═══════════════════════════════════════════════════════════════════════════");
+    println!("══════════════════════════════════════");
+    println!("  Counterexample Visualization Demos  ");
+    println!("══════════════════════════════════════");
+    println!();
 
     demo_linear_counterexample();
     demo_lasso_counterexample();
@@ -23,13 +30,7 @@ fn main() {
 
 /// Demo 1: Linear counterexample with ASCII visualization
 fn demo_linear_counterexample() {
-    println!();
-    println!("┌─────────────────────────────────────────────────────────────────────────┐");
-    println!("│  DEMO 1: Linear Counterexample - Traffic Light Violation                │");
-    println!("└─────────────────────────────────────────────────────────────────────────┘");
-    println!();
-
-    // Simple traffic light that can get stuck in an unsafe state
+    header("Demo 1: Linear Counterexample - Traffic Light Violation");
     let bdd = Rc::new(Bdd::default());
     let mut ts = TransitionSystem::new(bdd);
 
@@ -126,11 +127,7 @@ fn demo_linear_counterexample() {
 
 /// Demo 2: Lasso counterexample for liveness violation
 fn demo_lasso_counterexample() {
-    println!();
-    println!("┌─────────────────────────────────────────────────────────────────────────┐");
-    println!("│  DEMO 2: Lasso Counterexample - Starvation                              │");
-    println!("└─────────────────────────────────────────────────────────────────────────┘");
-    println!();
+    header("Demo 2: Lasso Counterexample - Starvation");
 
     // Two processes competing for a resource
     // Process 0 can starve process 1
@@ -206,10 +203,8 @@ fn demo_lasso_counterexample() {
 
 /// Demo 3: XAI-style explanations
 fn demo_xai_explanations() {
-    println!();
-    println!("┌─────────────────────────────────────────────────────────────────────────┐");
-    println!("│  DEMO 3: XAI-Style Property Violation Explanations                      │");
-    println!("└─────────────────────────────────────────────────────────────────────────┘");
+    header("Demo 3: XAI-Style Property Violation Explanations");
+    println!("────────────────────────────────────────────────");
     println!();
 
     // Simple counter that overflows

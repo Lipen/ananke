@@ -42,6 +42,12 @@ use ananke_bdd::bdd::Bdd;
 use ananke_bdd::reference::Ref;
 use model_checking::*;
 
+fn header(s: &str) {
+    println!("{}", s);
+    println!("{}", "─".repeat(s.len()));
+    println!();
+}
+
 /// Build a Towers of Hanoi model with the specified number of disks.
 ///
 /// Uses one-hot encoding: 3 boolean variables per disk (on_a, on_b, on_c).
@@ -402,21 +408,22 @@ fn solve_hanoi(n_disks: usize) -> Vec<HanoiState> {
 }
 
 fn main() {
-    println!("Towers of Hanoi - Symbolic Planning with BDDs");
-    println!("==============================================\n");
+    println!("═════════════════════════════════════════════════");
+    println!("  Towers of Hanoi — Symbolic Planning with BDDs  ");
+    println!("═════════════════════════════════════════════════");
+    println!();
 
     println!("The classic puzzle: move N disks from peg A to peg C,");
-    println!("never placing a larger disk on a smaller one.\n");
+    println!("never placing a larger disk on a smaller one.");
+    println!();
 
-    // ═══════════════════════════════════════════════════════════════════════════
     // Part 1: Small Example (2 disks) - Detailed Walkthrough
-    // ═══════════════════════════════════════════════════════════════════════════
+    //
 
-    println!("Part 1: 2-Disk Puzzle (Detailed Analysis)");
-    println!("------------------------------------------\n");
+    header("Part 1: 2-Disk Puzzle (Detailed Analysis)");
 
     let n = 2;
-    println!("Step 1: Building the model...\n");
+    header("Step 1: Building the Model");
 
     println!("  State variables ({} boolean, one-hot encoding):", 3 * n);
     for i in 0..n {
@@ -444,7 +451,7 @@ fn main() {
     println!("  Model built in {:?}\n", start.elapsed());
 
     // State space analysis
-    println!("Step 2: Analyzing state space...\n");
+    header("Step 2: Analyzing State Space");
 
     let start = Instant::now();
     let reachable = ts.reachable();
@@ -462,7 +469,7 @@ fn main() {
     }
 
     // Optimal solution
-    println!("Step 3: Finding optimal solution (BFS)...\n");
+    header("Step 3: Finding Optimal Solution (BFS)");
 
     let goal = ts.get_label("goal").unwrap();
     let optimal = minimum_steps_to_reach(&ts, goal);
@@ -476,7 +483,7 @@ fn main() {
     }
 
     // Extract and display the solution path
-    println!("Step 4: Displaying optimal solution...\n");
+    header("Step 4: Displaying Optimal Solution");
 
     let path = solve_hanoi(n);
     println!("  Solution ({} moves):\n", path.len() - 1);
@@ -514,12 +521,12 @@ fn main() {
     println!();
 
     // CTL Properties
-    println!("Step 5: Verifying CTL properties...\n");
+    header("Step 5: Verifying CTL Properties");
 
     let checker = CtlChecker::new(ts.clone());
 
     // EF goal - can reach goal
-    println!("--- Property 1: Goal Reachability ---");
+    header("Property 1: Goal Reachability");
     println!("CTL: EF goal");
     println!("'There exists a path from start to goal'\n");
     let ef_goal = CtlFormula::ef(CtlFormula::atom("goal"));
@@ -529,7 +536,7 @@ fn main() {
     println!();
 
     // AG EF start - can always return to start
-    println!("--- Property 2: Reversibility ---");
+    header("Property 2: Reversibility");
     println!("CTL: AG EF start");
     println!("'From any state, we can return to start'\n");
     let ag_ef_start = CtlFormula::ag(CtlFormula::ef(CtlFormula::atom("start")));
@@ -539,12 +546,9 @@ fn main() {
     assert!(holds, "AG EF start should hold");
     println!();
 
-    // ═══════════════════════════════════════════════════════════════════════════
     // Part 2: Scaling Analysis (3 disks)
-    // ═══════════════════════════════════════════════════════════════════════════
 
-    println!("Part 2: Scaling to 3 Disks");
-    println!("--------------------------\n");
+    header("Part 2: Scaling to 3 Disks");
 
     let n = 3;
     println!("  Variables: {} boolean ({} per disk)", 3 * n, 3);
@@ -596,18 +600,15 @@ fn main() {
     println!();
     println!("  ✓ Verified!\n");
 
-    // ═══════════════════════════════════════════════════════════════════════════
     // Part 3: Summary
-    // ═══════════════════════════════════════════════════════════════════════════
 
-    println!("Summary");
-    println!("-------");
-    println!("  N disks  │  States  │  Optimal Moves");
+    header("Summary");
+    println!("  N disks  │  States  │  Optimal Moves ");
     println!("  ─────────┼──────────┼────────────────");
-    println!("     2     │     9    │       3");
-    println!("     3     │    27    │       7");
-    println!("     4     │    81    │      15");
-    println!("    ...    │   3^N    │    2^N - 1");
+    println!("     2     │     9    │       3        ");
+    println!("     3     │    27    │       7        ");
+    println!("     4     │    81    │      15        ");
+    println!("    ...    │   3^N    │    2^N - 1     ");
     println!();
     println!("Key insights:");
     println!("  1. BDDs represent 3^N states compactly");

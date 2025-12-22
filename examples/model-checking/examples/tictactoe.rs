@@ -70,6 +70,12 @@ use ananke_bdd::bdd::Bdd;
 use ananke_bdd::reference::Ref;
 use model_checking::{TransitionSystem, Var};
 
+fn header(s: &str) {
+    println!("{}", s);
+    println!("{}", "─".repeat(s.len()));
+    println!();
+}
+
 /// Cell values (encoded as 2-bit)
 const EMPTY: u8 = 0b00;
 const X_MARK: u8 = 0b01;
@@ -341,7 +347,7 @@ impl TicTacToeModel {
 
 fn main() {
     println!("Tic-Tac-Toe - Game Solving with Attractor Computation");
-    println!("======================================================\n");
+    println!("═════════════════════════════════════════════════════\n");
 
     println!("Analyzing the classic 3x3 Tic-Tac-Toe game to determine");
     println!("winning, losing, and drawing positions for each player.\n");
@@ -350,7 +356,7 @@ fn main() {
     // Step 1: Build the Game Model
     // ═══════════════════════════════════════════════════════════════════════════
 
-    println!("Step 1: Building the game model...\n");
+    header("Step 1: Building the game model");
 
     let mut model = TicTacToeModel::new();
     model.build();
@@ -366,7 +372,7 @@ fn main() {
     // Step 2: State Space Analysis
     // ═══════════════════════════════════════════════════════════════════════════
 
-    println!("Step 2: Analyzing state space...\n");
+    header("Step 2: Analyzing state space");
 
     let reachable = ts.reachable();
     let state_count = ts.count_states(reachable);
@@ -385,7 +391,7 @@ fn main() {
     // Step 3: Terminal State Analysis
     // ═══════════════════════════════════════════════════════════════════════════
 
-    println!("Step 3: Analyzing terminal states...\n");
+    header("Step 3: Analyzing terminal states");
 
     let x_wins = ts.get_label("x_wins").unwrap();
     let o_wins = ts.get_label("o_wins").unwrap();
@@ -414,7 +420,7 @@ fn main() {
     // Step 4: Attractor Computation
     // ═══════════════════════════════════════════════════════════════════════════
 
-    println!("Step 4: Computing attractors (winning regions)...\n");
+    header("Step 4: Computing attractors (winning regions)");
 
     println!("  Attractor = states from which a player can FORCE a win,");
     println!("  assuming optimal play from both sides.\n");
@@ -423,7 +429,7 @@ fn main() {
     let x_turn = ts.get_label("x_turn").unwrap();
     let o_turn = ts.get_label("o_turn").unwrap();
 
-    println!("--- Computing X's Winning Region ---");
+    println!("─── Computing X's Winning Region ───");
     println!("States from which X can force a win...\n");
 
     let x_winning_region = model.compute_attractor(x_turn, x_wins);
@@ -432,7 +438,7 @@ fn main() {
 
     println!("  X-winning region: {} reachable states", x_region_count);
 
-    println!("\n--- Computing O's Winning Region ---");
+    println!("\n─── Computing O's Winning Region ───");
     println!("States from which O can force a win...\n");
 
     let o_winning_region = model.compute_attractor(o_turn, o_wins);
@@ -446,7 +452,7 @@ fn main() {
     let drawing_region = bdd.apply_and(reachable, bdd.apply_not(any_winning));
     let draw_region_count = ts.count_states(drawing_region).unwrap_or(0);
 
-    println!("\n--- Drawing Region ---");
+    println!("\n─── Drawing Region ───");
     println!("States where best play leads to a draw...\n");
     println!("  Drawing region: {} reachable states", draw_region_count);
     println!();
@@ -455,7 +461,7 @@ fn main() {
     // Step 5: Initial Position Analysis
     // ═══════════════════════════════════════════════════════════════════════════
 
-    println!("Step 5: Analyzing the initial position...\n");
+    header("Step 5: Analyzing the initial position");
 
     let initial = ts.initial();
 
@@ -492,7 +498,7 @@ fn main() {
     // Step 6: Strategy Insights
     // ═══════════════════════════════════════════════════════════════════════════
 
-    println!("Step 6: Strategy insights...\n");
+    header("Step 6: Strategy insights");
 
     // Count winning positions by whose turn it is
     let x_win_on_x_turn = bdd.apply_and(x_winning_reachable, x_turn);
@@ -518,8 +524,7 @@ fn main() {
     // Key Insights
     // ═══════════════════════════════════════════════════════════════════════════
 
-    println!("Key Insights");
-    println!("------------\n");
+    header("Key Insights");
 
     println!("  1. ATTRACTOR COMPUTATION");
     println!("     - Backward fixpoint from goal states");
@@ -545,8 +550,7 @@ fn main() {
     // Summary
     // ═══════════════════════════════════════════════════════════════════════════
 
-    println!("Summary");
-    println!("-------");
+    header("Summary");
     if let Some(count) = state_count {
         println!("  Total reachable states:  {}", count);
     }

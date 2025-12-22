@@ -36,6 +36,12 @@ use std::time::Instant;
 use ananke_bdd::bdd::Bdd;
 use model_checking::*;
 
+fn header(s: &str) {
+    println!("{}", s);
+    println!("{}", "─".repeat(s.len()));
+    println!();
+}
+
 /// Creates an n-bit counter transition system.
 ///
 /// The counter increments according to standard binary addition:
@@ -130,13 +136,12 @@ fn create_counter(n: usize) -> Rc<TransitionSystem> {
 }
 
 fn main() {
-    println!("N-Bit Counter - BDD Scalability Demo");
-    println!("====================================\n");
+    println!("═════════════════════════════════════════════════");
+    println!("  N-Bit Counter — BDD Scalability Demonstration  ");
+    println!("═════════════════════════════════════════════════");
+    println!();
 
-    // -- Part 1: Small Counter (4-bit) --
-
-    println!("Part 1: Detailed Analysis of 4-bit Counter");
-    println!("------------------------------------------\n");
+    header("Part 1: Detailed Analysis of 4-bit Counter");
 
     println!("Building 4-bit counter model...");
     println!("  Counter cycles: 0 → 1 → 2 → ... → 15 → 0 (wrap)\n");
@@ -144,9 +149,7 @@ fn main() {
     let ts = create_counter(4);
     let checker = CtlChecker::new(ts.clone());
 
-    // Analysis 1: State Space
-
-    println!("--- Analysis 1: State Space ---\n");
+    header("Analysis 1: State Space");
 
     let reachable = ts.reachable();
     let state_count = ts.count_states(reachable);
@@ -158,12 +161,11 @@ fn main() {
 
         // A 4-bit counter visits ALL 16 states
         assert_eq!(count, 16, "4-bit counter should have exactly 16 reachable states");
-        println!("  ✓ All 16 states are reachable\n");
+        println!("  ✓ All 16 states are reachable");
+        println!();
     }
 
-    // Property 1: AG EF zero
-
-    println!("--- Property 1: Reversibility ---");
+    header("Property 1: Reversibility");
     println!("CTL: AG EF zero");
     println!("'From any state, zero is reachable'\n");
 
@@ -173,11 +175,10 @@ fn main() {
     println!("  Result: {}", if reversibility { "✓ HOLDS" } else { "✗ VIOLATED" });
 
     assert!(reversibility, "Counter should always be able to return to zero!");
-    println!("  ✓ Counter can always cycle back to zero\n");
+    println!("  ✓ Counter can always cycle back to zero");
+    println!();
 
-    // Property 2: AF max
-
-    println!("--- Property 2: Maximum Reachability ---");
+    header("Property 2: Maximum Reachability");
     println!("CTL: AF max");
     println!("'Counter will reach maximum (15)'\n");
 
@@ -187,11 +188,10 @@ fn main() {
     println!("  Result: {}", if reaches_max { "✓ HOLDS" } else { "✗ VIOLATED" });
 
     assert!(reaches_max, "Counter should eventually reach max value!");
-    println!("  ✓ Counter reaches 15 on every path\n");
+    println!("  ✓ Counter reaches 15 on every path");
+    println!();
 
-    // Property 3: AG (max → AX zero)
-
-    println!("--- Property 3: Wrap-around ---");
+    header("Property 3: Wrap-around");
     println!("CTL: AG (max → AX zero)");
     println!("'After max (15), next state is zero'\n");
 
@@ -201,11 +201,10 @@ fn main() {
     println!("  Result: {}", if wraps { "✓ HOLDS" } else { "✗ VIOLATED" });
 
     assert!(wraps, "Counter should wrap from max to zero!");
-    println!("  ✓ 15 + 1 = 0 (mod 16)\n");
+    println!("  ✓ 15 + 1 = 0 (mod 16)");
+    println!();
 
-    // Property 4: AG (even → AX odd)
-
-    println!("--- Property 4: Parity Alternation ---");
+    header("Property 4: Parity Alternation");
     println!("CTL: AG (even → AX odd)");
     println!("'Even numbers followed by odd'\n");
 
@@ -215,14 +214,13 @@ fn main() {
     println!("  Result: {}", if alternates { "✓ HOLDS" } else { "✗ VIOLATED" });
 
     assert!(alternates, "Even numbers should be followed by odd numbers!");
-    println!("  ✓ Parity alternates correctly\n");
+    println!("  ✓ Parity alternates correctly");
+    println!();
 
-    // -- Part 2: Scalability Test --
+    header("Part 2: Scalability Analysis");
 
-    println!("Part 2: Scalability Analysis");
-    println!("-------------------------------------------\n");
-
-    println!("Testing how BDD performance scales with counter size...\n");
+    println!("Testing how BDD performance scales with counter size...");
+    println!();
 
     println!(
         "  {:>5}  {:>12}  {:>10}  {:>10}  {:>10}  {:>10}  {:>12}",
@@ -292,41 +290,43 @@ fn main() {
         );
     }
 
-    println!("\n  ✓ All scalability tests passed!\n");
+    println!();
+    println!("  ✓ All scalability tests passed!");
+    println!();
 
-    // -- Key Insights --
-
-    println!("Key Insights");
-    println!("------------\n");
+    header("Key Insights");
 
     println!("  1. EXPONENTIAL STATE SPACE, POLYNOMIAL BDD SIZE");
     println!("     - 14-bit counter has 16,384 states");
     println!("     - Reachability time is the main bottleneck");
-    println!("     - BDD node count stays manageable\n");
+    println!("     - BDD node count stays manageable");
+    println!();
 
     println!("  2. SYMBOLIC REACHABILITY");
     println!("     - We never enumerate states one by one");
     println!("     - BDD represents the set of ALL reachable states");
-    println!("     - Each fixpoint iteration processes ALL states at once\n");
+    println!("     - Each fixpoint iteration processes ALL states at once");
+    println!();
 
     println!("  3. STRUCTURE EXPLOITATION");
     println!("     - Counter has regular structure (binary addition)");
     println!("     - BDDs exploit this regularity automatically");
-    println!("     - Irregular systems may not scale as well\n");
+    println!("     - Irregular systems may not scale as well");
+    println!();
 
     println!("  4. VARIABLE ORDERING MATTERS");
     println!("     - Our default ordering (b0, b1, ..., bn-1) works well");
     println!("     - Different orderings can dramatically affect BDD size");
-    println!("     - Finding optimal ordering is NP-complete in general\n");
+    println!("     - Finding optimal ordering is NP-complete in general");
+    println!();
 
-    // -- Summary --
+    header("Summary");
 
-    println!("Summary");
-    println!("-------");
-    println!("  BDD-based model checking scales well:");
-    println!("  - 4-bit counter:   16 states          ✓");
-    println!("  - 10-bit counter:  1,024 states       ✓");
-    println!("  - 14-bit counter:  16,384 states      ✓\n");
+    println!("BDD-based model checking scales well:");
+    println!("- 4-bit counter:   16 states          ✓");
+    println!("- 10-bit counter:  1,024 states       ✓");
+    println!("- 14-bit counter:  16,384 states      ✓");
+    println!();
 
     println!("✓ All assertions passed! BDDs handle exponential state spaces.\n");
 }
