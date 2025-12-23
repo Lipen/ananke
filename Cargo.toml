@@ -13,6 +13,7 @@ members = [
     "examples/boolean-functions",
     "examples/expr-space",
     "examples/cig",
+    "examples/incremental-dd",
 ]
 
 [workspace.package]

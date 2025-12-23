@@ -1,0 +1,25 @@
+[package]
+name = "incremental-dd"
+version = "0.1.0"
+edition = "2021"
+description = "Incremental and differential decision diagrams for evolving symbolic systems"
+license = "MIT OR Apache-2.0"
+repository = "https://github.com/your-repo/ananke"
+keywords = ["bdd", "incremental", "verification", "synthesis", "decision-diagrams"]
+
+[dependencies]
+ananke-bdd = { path = "../../ananke-bdd" }
+num-traits = "0.2"
+log = "0.4"
+
+# For model-checking integration
+model-checking = { path = "../model-checking" }
+
+[dev-dependencies]
+criterion = { version = "0.5", features = ["html_reports"] }
+rand = "0.8"
+env_logger = "0.11"
+
+[[bench]]
+name = "incremental_bench"
+harness = false
