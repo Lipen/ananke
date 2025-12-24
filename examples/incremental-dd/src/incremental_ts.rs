@@ -4,6 +4,7 @@
 //! update capabilities, tracking reachability state across modifications.
 
 use std::rc::Rc;
+use std::time::Instant;
 
 use ananke_bdd::bdd::Bdd;
 use ananke_bdd::reference::Ref;
@@ -104,6 +105,7 @@ impl IncrementalTransSystem {
 
     /// Full reachability computation.
     fn compute_reachable_full(&mut self) -> Ref {
+        let start = Instant::now();
         let mut iterations = 0;
         let mut reached = self.ts.initial();
         let mut frontier = reached;
@@ -116,8 +118,9 @@ impl IncrementalTransSystem {
 
             if new_reached == reached {
                 self.frontier = Some(self.bdd().zero());
+                let duration = start.elapsed();
                 self.metrics.record_full_recompute(
-                    std::time::Duration::ZERO, // Caller should time externally
+                    duration,
                     iterations,
                 );
                 return reached;
@@ -134,6 +137,7 @@ impl IncrementalTransSystem {
     /// When transitions are added, we need to propagate forward from
     /// states that gain new outgoing edges.
     pub fn add_transitions(&mut self, added: Ref) -> DeltaEffect {
+        let start = Instant::now();
         // First, update the transition relation
         let old_trans = self.ts.transition();
         let new_trans = self.ts.bdd().apply_or(old_trans, added);
@@ -177,8 +181,9 @@ impl IncrementalTransSystem {
         self.frontier = Some(self.bdd().zero());
 
         let affected = self.ts.bdd().size(truly_new) as usize;
+        let duration = start.elapsed();
         self.metrics.record_local_change();
-        self.metrics.record_incremental(std::time::Duration::ZERO, iterations);
+        self.metrics.record_incremental(duration, iterations);
 
         DeltaEffect::LocalChange { affected_nodes: affected }
     }
@@ -471,6 +476,7 @@ impl IncrementalReachabilityFixpoint {
 
 impl crate::traits::IncrementalFixpoint for IncrementalReachabilityFixpoint {
     fn compute(&mut self) -> Ref {
+        let start = Instant::now();
         let bdd = self.ts.bdd();
         let mut reached = self.ts.ts().initial();
         let mut frontier = reached;
@@ -487,7 +493,8 @@ impl crate::traits::IncrementalFixpoint for IncrementalReachabilityFixpoint {
                 self.frontier = bdd.zero();
                 self.iterations = iterations;
                 self.is_valid = true;
-                self.metrics.record_full_recompute(std::time::Duration::ZERO, iterations);
+                let duration = start.elapsed();
+                self.metrics.record_full_recompute(duration, iterations);
                 return reached;
             }
 
