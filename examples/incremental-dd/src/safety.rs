@@ -4,12 +4,14 @@
 //! Given a safety property (invariant), it can efficiently re-verify when
 //! the system or property changes.
 
+use std::time::Instant;
+
 use ananke_bdd::bdd::Bdd;
 use ananke_bdd::reference::Ref;
 
 use crate::delta::{Delta, SystemDelta};
 use crate::incremental_ts::IncrementalTransSystem;
-use crate::metrics::MetricsCollector;
+use crate::metrics::{IncrementalMetricsData, MetricsCollector};
 use crate::traits::{IncrementalTransitionSystem, IncrementalVerificationResult, IncrementalVerifier, VerificationResult};
 
 /// Incremental safety checker.
@@ -26,7 +28,6 @@ pub struct IncrementalSafetyChecker {
     /// Cached violation states (if any).
     violation: Option<Ref>,
     /// Metrics collector.
-    #[allow(dead_code)]
     metrics: MetricsCollector,
 }
 
@@ -53,9 +54,9 @@ impl IncrementalSafetyChecker {
     }
 
     /// Get mutable access to the transition system.
+    /// This invalidates the verification result cache.
     pub fn ts_mut(&mut self) -> &mut IncrementalTransSystem {
-        self.result = None;
-        self.violation = None;
+        self.invalidate();
         &mut self.ts
     }
 
@@ -65,10 +66,26 @@ impl IncrementalSafetyChecker {
     }
 
     /// Set a new invariant.
+    /// This invalidates the verification result.
     pub fn set_invariant(&mut self, invariant: Ref) {
         self.invariant = invariant;
+        self.invalidate();
+    }
+
+    /// Invalidate cached verification state.
+    fn invalidate(&mut self) {
         self.result = None;
         self.violation = None;
+    }
+
+    /// Get collected metrics.
+    pub fn metrics(&self) -> &IncrementalMetricsData {
+        self.metrics.metrics()
+    }
+
+    /// Reset metrics.
+    pub fn reset_metrics(&mut self) {
+        self.metrics = MetricsCollector::new();
     }
 
     /// Check if all reachable states satisfy the invariant.
@@ -76,17 +93,21 @@ impl IncrementalSafetyChecker {
     /// Safety: Reach ⊆ Invariant
     fn check_safety(&mut self) -> VerificationResult {
         log::debug!("SAFETY: Checking safety property");
+        let start = Instant::now();
         let reach = self.ts.reachable();
         let invariant = self.invariant;
 
         // Violation = Reach ∧ ¬Invariant
         let violation = self.bdd().apply_and(reach, -invariant);
 
+        let duration = start.elapsed();
+        self.metrics.record_full_recompute(duration, 1);
+
         if self.bdd().is_zero(violation) {
-            log::info!("SAFETY: Property holds");
+            log::info!("SAFETY: Property holds in {:?}", duration);
             VerificationResult::Holds
         } else {
-            log::info!("SAFETY: Property violated");
+            log::info!("SAFETY: Property violated in {:?}", duration);
             self.violation = Some(violation);
             VerificationResult::Violated {
                 violation_states: violation,
@@ -165,6 +186,8 @@ impl IncrementalSafetyChecker {
 
     /// Update the invariant and re-verify.
     fn update_invariant(&mut self, new_invariant: Ref) -> IncrementalVerificationResult {
+        log::debug!("SAFETY: Updating invariant");
+        let start = Instant::now();
         let old_invariant = self.invariant;
         let prev_result = self.result.take();
 
@@ -179,6 +202,9 @@ impl IncrementalSafetyChecker {
         // If invariant only weakened and was safe, still safe
         if self.bdd().is_zero(strengthened) {
             if let Some(VerificationResult::Holds) = prev_result {
+                log::debug!("SAFETY: Weakened invariant maintains safety");
+                let duration = start.elapsed();
+                self.metrics.record_incremental(duration, 1);
                 self.result = Some(VerificationResult::Holds);
                 return IncrementalVerificationResult::StillHolds;
             }
@@ -190,6 +216,9 @@ impl IncrementalSafetyChecker {
                 // Previous violations might still exist
                 let still_violating = self.bdd().apply_and(violation_states, -new_invariant);
                 if !self.bdd().is_zero(still_violating) {
+                    log::debug!("SAFETY: Strengthened invariant still violated");
+                    let duration = start.elapsed();
+                    self.metrics.record_incremental(duration, 1);
                     self.violation = Some(still_violating);
                     self.result = Some(VerificationResult::Violated {
                         violation_states: still_violating,
@@ -200,15 +229,21 @@ impl IncrementalSafetyChecker {
         }
 
         // Full recheck
+        log::debug!("SAFETY: Invariant change requires full recheck");
         let new_violation = self.bdd().apply_and(reach, -new_invariant);
+
+        let duration = start.elapsed();
+        self.metrics.record_full_recompute(duration, 1);
 
         if self.bdd().is_zero(new_violation) {
             self.result = Some(VerificationResult::Holds);
             self.violation = None;
             let was_failing = prev_result.map(|r| !r.holds()).unwrap_or(false);
             if was_failing {
+                log::info!("SAFETY: Now holds after invariant update");
                 IncrementalVerificationResult::NowHolds
             } else {
+                log::debug!("SAFETY: Still holds after invariant update");
                 IncrementalVerificationResult::StillHolds
             }
         } else {
@@ -218,8 +253,10 @@ impl IncrementalSafetyChecker {
             });
             let was_safe = prev_result.map(|r| r.holds()).unwrap_or(true);
             if was_safe {
+                log::info!("SAFETY: Now fails after invariant update");
                 IncrementalVerificationResult::NowFails { new_violation }
             } else {
+                log::debug!("SAFETY: Still fails after invariant update");
                 IncrementalVerificationResult::StillFails
             }
         }
