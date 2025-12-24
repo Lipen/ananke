@@ -1140,14 +1140,14 @@ impl Bdd {
     ///
     /// let bdd = Bdd::default();
     ///
-    /// // Using raw integers (backward compatible)
+    /// // Using raw integers
     /// let x1 = bdd.mk_var(1);
     /// let x2 = bdd.mk_var(2);
     ///
     /// // Using Var type
     /// let x3 = bdd.mk_var(Var::new(3));
     ///
-    /// // Using allocate_variable
+    /// // Using allocate_variable (returns Var)
     /// let x4 = bdd.allocate_variable();
     /// let bdd_x4 = bdd.mk_var(x4);
     ///
