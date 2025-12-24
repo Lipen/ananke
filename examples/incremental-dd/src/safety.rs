@@ -9,7 +9,7 @@ use std::time::Instant;
 use ananke_bdd::bdd::Bdd;
 use ananke_bdd::reference::Ref;
 
-use crate::delta::{Delta, SystemDelta};
+use crate::delta::{Delta, DeltaEffect, SystemDelta};
 use crate::incremental_ts::IncrementalTransSystem;
 use crate::metrics::{IncrementalMetricsData, MetricsCollector};
 use crate::traits::{IncrementalTransitionSystem, IncrementalVerificationResult, IncrementalVerifier, VerificationResult};
@@ -124,7 +124,7 @@ impl IncrementalSafetyChecker {
         let effect = self.ts.update_transitions(delta.clone());
 
         match effect {
-            crate::delta::DeltaEffect::NoChange => {
+            DeltaEffect::NoChange => {
                 log::debug!("SAFETY: No change to reachability");
                 // No change to reachability, result unchanged
                 if let Some(r) = prev_result {
@@ -136,7 +136,7 @@ impl IncrementalSafetyChecker {
                     }
                 }
             }
-            crate::delta::DeltaEffect::LocalChange { .. } => {
+            DeltaEffect::LocalChange { .. } => {
                 log::debug!("SAFETY: Local change to reachability, checking incrementally");
                 // Reachability changed, but we can check incrementally
                 if delta.added.is_some() {
@@ -172,7 +172,7 @@ impl IncrementalSafetyChecker {
                     }
                 }
             }
-            crate::delta::DeltaEffect::GlobalRebuildRequired => {
+            DeltaEffect::GlobalRebuildRequired => {
                 log::info!("SAFETY: Global rebuild required");
                 // Full recomputation needed
             }
