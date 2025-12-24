@@ -51,7 +51,7 @@ fn main() {
         let b0_ref = if b0_val { bdd.mk_var(p_b0) } else { -bdd.mk_var(p_b0) };
         let b1_ref = if b1_val { bdd.mk_var(p_b1) } else { -bdd.mk_var(p_b1) };
 
-        bdd.apply_and(b0_ref, b1_ref)
+        bdd.apply_and_many([b0_ref, b1_ref])
     };
 
     // Process 0 states
@@ -73,50 +73,49 @@ fn main() {
     let p1_critical_next = encode_state(p1_b0_next, p1_b1_next, ProcessState::Critical);
 
     // Unchanged predicates (process stays in same state)
-    let p0_unchanged = bdd.apply_or(
-        bdd.apply_or(bdd.apply_and(p0_idle, p0_idle_next), bdd.apply_and(p0_trying, p0_trying_next)),
+    let p0_unchanged = bdd.apply_or_many([
+        bdd.apply_and(p0_idle, p0_idle_next),
+        bdd.apply_and(p0_trying, p0_trying_next),
         bdd.apply_and(p0_critical, p0_critical_next),
-    );
+    ]);
 
-    let p1_unchanged = bdd.apply_or(
-        bdd.apply_or(bdd.apply_and(p1_idle, p1_idle_next), bdd.apply_and(p1_trying, p1_trying_next)),
+    let p1_unchanged = bdd.apply_or_many([
+        bdd.apply_and(p1_idle, p1_idle_next),
+        bdd.apply_and(p1_trying, p1_trying_next),
         bdd.apply_and(p1_critical, p1_critical_next),
-    );
+    ]);
 
     // === Phase 1: Initial buggy system (no mutex) ===
     println!("Phase 1: Initial system (BUGGY - no mutual exclusion)\n");
 
     // Initial state: both idle
-    let initial = bdd.apply_and(p0_idle, p1_idle);
+    let initial = bdd.apply_and_many([p0_idle, p1_idle]);
     ts.set_initial(initial);
 
     // Transitions (buggy: can enter critical regardless of other process)
     // P0: idle -> trying -> critical -> idle
-    let p0_idle_to_trying = bdd.apply_and(bdd.apply_and(p0_idle, p0_trying_next), p1_unchanged);
-    let p0_trying_to_critical = bdd.apply_and(bdd.apply_and(p0_trying, p0_critical_next), p1_unchanged);
-    let p0_critical_to_idle = bdd.apply_and(bdd.apply_and(p0_critical, p0_idle_next), p1_unchanged);
+    let p0_idle_to_trying = bdd.apply_and_many([p0_idle, p0_trying_next, p1_unchanged]);
+    let p0_trying_to_critical = bdd.apply_and_many([p0_trying, p0_critical_next, p1_unchanged]);
+    let p0_critical_to_idle = bdd.apply_and_many([p0_critical, p0_idle_next, p1_unchanged]);
 
     // P1: same transitions
-    let p1_idle_to_trying = bdd.apply_and(bdd.apply_and(p1_idle, p1_trying_next), p0_unchanged);
-    let p1_trying_to_critical = bdd.apply_and(bdd.apply_and(p1_trying, p1_critical_next), p0_unchanged);
-    let p1_critical_to_idle = bdd.apply_and(bdd.apply_and(p1_critical, p1_idle_next), p0_unchanged);
+    let p1_idle_to_trying = bdd.apply_and_many([p1_idle, p1_trying_next, p0_unchanged]);
+    let p1_trying_to_critical = bdd.apply_and_many([p1_trying, p1_critical_next, p0_unchanged]);
+    let p1_critical_to_idle = bdd.apply_and_many([p1_critical, p1_idle_next, p0_unchanged]);
 
-    let trans_buggy = [
+    let trans_buggy = bdd.apply_or_many([
         p0_idle_to_trying,
         p0_trying_to_critical,
         p0_critical_to_idle,
         p1_idle_to_trying,
         p1_trying_to_critical,
         p1_critical_to_idle,
-    ]
-    .into_iter()
-    .reduce(|a, b| bdd.apply_or(a, b))
-    .unwrap();
+    ]);
 
     ts.set_transition(trans_buggy);
 
     // Safety property: not (p0_critical AND p1_critical)
-    let mutex_invariant = -bdd.apply_and(p0_critical, p1_critical);
+    let mutex_invariant = -bdd.apply_and_many([p0_critical, p1_critical]);
 
     let mut checker = IncrementalSafetyChecker::new(ts, mutex_invariant);
 
@@ -138,28 +137,19 @@ fn main() {
 
     // New transitions with guards
     // P0: trying -> critical ONLY IF p1 is NOT critical
-    let p0_trying_to_critical_fixed = bdd.apply_and(
-        bdd.apply_and(p0_trying, p0_critical_next),
-        bdd.apply_and(p1_unchanged, -p1_critical), // Guard: p1 not critical
-    );
+    let p0_trying_to_critical_fixed = bdd.apply_and_many([p0_trying, p0_critical_next, p1_unchanged, -p1_critical]);
 
     // P1: trying -> critical ONLY IF p0 is NOT critical
-    let p1_trying_to_critical_fixed = bdd.apply_and(
-        bdd.apply_and(p1_trying, p1_critical_next),
-        bdd.apply_and(p0_unchanged, -p0_critical), // Guard: p0 not critical
-    );
+    let p1_trying_to_critical_fixed = bdd.apply_and_many([p1_trying, p1_critical_next, p0_unchanged, -p0_critical]);
 
-    let trans_fixed = [
+    let trans_fixed = bdd.apply_or_many([
         p0_idle_to_trying,
         p0_trying_to_critical_fixed,
         p0_critical_to_idle,
         p1_idle_to_trying,
         p1_trying_to_critical_fixed,
         p1_critical_to_idle,
-    ]
-    .into_iter()
-    .reduce(|a, b| bdd.apply_or(a, b))
-    .unwrap();
+    ]);
 
     ts.set_transition(trans_fixed);
 
@@ -182,14 +172,8 @@ fn main() {
     println!("\nPhase 3: Add fast path (idle -> critical if other is idle)\n");
 
     // Fast path: if other process is idle, can go directly to critical
-    let p0_fast = bdd.apply_and(
-        bdd.apply_and(p0_idle, p0_critical_next),
-        bdd.apply_and(p1_unchanged, p1_idle), // Only if p1 is idle
-    );
-    let p1_fast = bdd.apply_and(
-        bdd.apply_and(p1_idle, p1_critical_next),
-        bdd.apply_and(p0_unchanged, p0_idle), // Only if p0 is idle
-    );
+    let p0_fast = bdd.apply_and_many([p0_idle, p0_critical_next, p1_unchanged, p1_idle]);
+    let p1_fast = bdd.apply_and_many([p1_idle, p1_critical_next, p0_unchanged, p0_idle]);
 
     let fast_trans = bdd.apply_or(p0_fast, p1_fast);
 
