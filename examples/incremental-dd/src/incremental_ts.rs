@@ -105,6 +105,7 @@ impl IncrementalTransSystem {
 
     /// Full reachability computation.
     fn compute_reachable_full(&mut self) -> Ref {
+        log::debug!("REACHABILITY: Starting full reachability computation");
         let start = Instant::now();
         let mut iterations = 0;
         let mut reached = self.ts.initial();
@@ -119,9 +120,11 @@ impl IncrementalTransSystem {
             if new_reached == reached {
                 self.frontier = Some(self.bdd().zero());
                 let duration = start.elapsed();
-                self.metrics.record_full_recompute(
+                self.metrics.record_full_recompute(duration, iterations);
+                log::info!(
+                    "REACHABILITY: Full computation completed in {:?} ({} iterations)",
                     duration,
-                    iterations,
+                    iterations
                 );
                 return reached;
             }
@@ -137,6 +140,7 @@ impl IncrementalTransSystem {
     /// When transitions are added, we need to propagate forward from
     /// states that gain new outgoing edges.
     pub fn add_transitions(&mut self, added: Ref) -> DeltaEffect {
+        log::debug!("TRANSITIONS: Adding new transitions");
         let start = Instant::now();
         // First, update the transition relation
         let old_trans = self.ts.transition();
@@ -146,6 +150,7 @@ impl IncrementalTransSystem {
 
         // Check if reachability is affected
         if self.reach.is_none() {
+            log::debug!("TRANSITIONS: No cached reachability, skipping propagation");
             self.metrics.record_local_change();
             return DeltaEffect::LocalChange { affected_nodes: 0 };
         }
@@ -161,6 +166,7 @@ impl IncrementalTransSystem {
         // If no reachable state has new edges, reachability unchanged
         let affected_reachable = self.ts.bdd().apply_and(reach, states_with_new_edges);
         if self.ts.bdd().is_zero(affected_reachable) {
+            log::debug!("TRANSITIONS: New transitions don't affect reachable states");
             self.metrics.record_no_change();
             return DeltaEffect::NoChange;
         }
@@ -171,11 +177,13 @@ impl IncrementalTransSystem {
         let truly_new = self.ts.bdd().apply_and(new_frontier, -reach);
 
         if self.ts.bdd().is_zero(truly_new) {
+            log::debug!("TRANSITIONS: No new reachable states discovered");
             self.metrics.record_no_change();
             return DeltaEffect::NoChange;
         }
 
         // Incrementally extend reachability
+        log::debug!("TRANSITIONS: Propagating forward from affected states");
         let (new_reach, iterations) = self.extend_reachability(reach, truly_new);
         self.reach = Some(new_reach);
         self.frontier = Some(self.bdd().zero());
@@ -185,6 +193,13 @@ impl IncrementalTransSystem {
         self.metrics.record_local_change();
         self.metrics.record_incremental(duration, iterations);
 
+        log::info!(
+            "TRANSITIONS: Incremental propagation completed in {:?} ({} iterations, {} new nodes)",
+            duration,
+            iterations,
+            affected
+        );
+
         DeltaEffect::LocalChange { affected_nodes: affected }
     }
 
@@ -193,6 +208,7 @@ impl IncrementalTransSystem {
     /// When transitions are removed, some states may become unreachable.
     /// This is harder to handle incrementally.
     pub fn remove_transitions(&mut self, removed: Ref) -> DeltaEffect {
+        log::debug!("TRANSITIONS: Removing transitions");
         // First, update the transition relation
         let old_trans = self.ts.transition();
         let new_trans = self.ts.bdd().apply_and(old_trans, -removed);
@@ -201,6 +217,7 @@ impl IncrementalTransSystem {
 
         // If we don't have cached reachability, nothing to invalidate
         if self.reach.is_none() {
+            log::debug!("TRANSITIONS: No cached reachability, skipping analysis");
             self.metrics.record_local_change();
             return DeltaEffect::LocalChange { affected_nodes: 0 };
         }
@@ -221,12 +238,14 @@ impl IncrementalTransSystem {
 
         if self.ts.bdd().is_zero(at_risk) {
             // No reachable non-initial state lost incoming edges
+            log::debug!("TRANSITIONS: Removed transitions don't affect reachability");
             self.metrics.record_no_change();
             return DeltaEffect::NoChange;
         }
 
         // Conservative approach: recompute reachability
         // (Full incremental removal is more complex and may not be worth it)
+        log::info!("TRANSITIONS: Transition removal requires global reachability rebuild");
         self.reach = None;
         self.frontier = None;
         self.metrics.record_global_rebuild();
@@ -476,6 +495,7 @@ impl IncrementalReachabilityFixpoint {
 
 impl crate::traits::IncrementalFixpoint for IncrementalReachabilityFixpoint {
     fn compute(&mut self) -> Ref {
+        log::debug!("FIXPOINT: Starting fixpoint computation");
         let start = Instant::now();
         let bdd = self.ts.bdd();
         let mut reached = self.ts.ts().initial();
@@ -495,6 +515,7 @@ impl crate::traits::IncrementalFixpoint for IncrementalReachabilityFixpoint {
                 self.is_valid = true;
                 let duration = start.elapsed();
                 self.metrics.record_full_recompute(duration, iterations);
+                log::info!("FIXPOINT: Fixpoint reached in {:?} ({} iterations)", duration, iterations);
                 return reached;
             }
 
@@ -510,12 +531,17 @@ impl crate::traits::IncrementalFixpoint for IncrementalReachabilityFixpoint {
     fn apply_delta(&mut self, delta: Delta) -> crate::traits::FixpointUpdate {
         use crate::traits::FixpointUpdate;
 
+        log::debug!("FIXPOINT: Applying delta");
         // Handle transition changes
         let effect = self.ts.update_transitions(delta);
 
         match effect {
-            DeltaEffect::NoChange => FixpointUpdate::Unchanged,
+            DeltaEffect::NoChange => {
+                log::debug!("FIXPOINT: Delta had no effect on fixpoint");
+                FixpointUpdate::Unchanged
+            }
             DeltaEffect::LocalChange { affected_nodes } => {
+                log::debug!("FIXPOINT: Local change detected, {} affected nodes", affected_nodes);
                 self.current = self.ts.reachable();
                 FixpointUpdate::PartiallyRecomputed {
                     iterations: 1,
@@ -523,6 +549,7 @@ impl crate::traits::IncrementalFixpoint for IncrementalReachabilityFixpoint {
                 }
             }
             DeltaEffect::GlobalRebuildRequired => {
+                log::info!("FIXPOINT: Global rebuild required");
                 self.is_valid = false;
                 self.compute();
                 FixpointUpdate::FullyRecomputed {

@@ -75,6 +75,7 @@ impl IncrementalSafetyChecker {
     ///
     /// Safety: Reach ⊆ Invariant
     fn check_safety(&mut self) -> VerificationResult {
+        log::debug!("SAFETY: Checking safety property");
         let reach = self.ts.reachable();
         let invariant = self.invariant;
 
@@ -82,8 +83,10 @@ impl IncrementalSafetyChecker {
         let violation = self.bdd().apply_and(reach, -invariant);
 
         if self.bdd().is_zero(violation) {
+            log::info!("SAFETY: Property holds");
             VerificationResult::Holds
         } else {
+            log::info!("SAFETY: Property violated");
             self.violation = Some(violation);
             VerificationResult::Violated {
                 violation_states: violation,
@@ -93,6 +96,7 @@ impl IncrementalSafetyChecker {
 
     /// Incrementally update after transition changes.
     fn update_transitions(&mut self, delta: Delta) -> IncrementalVerificationResult {
+        log::debug!("SAFETY: Updating after transition changes");
         let prev_result = self.result.take();
 
         // Apply delta to transition system
@@ -100,6 +104,7 @@ impl IncrementalSafetyChecker {
 
         match effect {
             crate::delta::DeltaEffect::NoChange => {
+                log::debug!("SAFETY: No change to reachability");
                 // No change to reachability, result unchanged
                 if let Some(r) = prev_result {
                     self.result = Some(r.clone());
@@ -111,6 +116,7 @@ impl IncrementalSafetyChecker {
                 }
             }
             crate::delta::DeltaEffect::LocalChange { .. } => {
+                log::debug!("SAFETY: Local change to reachability, checking incrementally");
                 // Reachability changed, but we can check incrementally
                 if delta.added.is_some() {
                     // New transitions: check if newly reachable states violate invariant
@@ -124,8 +130,10 @@ impl IncrementalSafetyChecker {
                         self.result = Some(VerificationResult::Holds);
                         self.violation = None;
                         if was_safe {
+                            log::debug!("SAFETY: Still holds");
                             return IncrementalVerificationResult::StillHolds;
                         } else {
+                            log::info!("SAFETY: Now holds");
                             return IncrementalVerificationResult::NowHolds;
                         }
                     } else {
@@ -134,14 +142,17 @@ impl IncrementalSafetyChecker {
                             violation_states: new_violation,
                         });
                         if was_safe {
+                            log::info!("SAFETY: Now fails");
                             return IncrementalVerificationResult::NowFails { new_violation };
                         } else {
+                            log::debug!("SAFETY: Still fails");
                             return IncrementalVerificationResult::StillFails;
                         }
                     }
                 }
             }
             crate::delta::DeltaEffect::GlobalRebuildRequired => {
+                log::info!("SAFETY: Global rebuild required");
                 // Full recomputation needed
             }
         }

@@ -137,6 +137,7 @@ impl IncrementalSynthesizer for IncrementalConstraintSynthesizer {
     }
 
     fn add_constraint(&mut self, constraint: Ref) -> ConstraintEffect {
+        log::debug!("SYNTHESIS: Adding constraint");
         let old_space = self.solution_space;
         let old_size = self.bdd.size(old_space);
 
@@ -147,12 +148,14 @@ impl IncrementalSynthesizer for IncrementalConstraintSynthesizer {
         if self.bdd.is_zero(new_space) {
             self.solution_space = new_space; // Set to zero/UNSAT
             self.metrics.record_global_rebuild();
+            log::info!("SYNTHESIS: Constraint caused UNSAT");
             return ConstraintEffect::Unsat;
         }
 
         // Check for no effect (constraint was already implied)
         if new_space == old_space {
             self.metrics.record_no_change();
+            log::debug!("SYNTHESIS: Constraint had no effect (already implied)");
             return ConstraintEffect::NoEffect;
         }
 
@@ -170,6 +173,7 @@ impl IncrementalSynthesizer for IncrementalConstraintSynthesizer {
         let removed = old_size.saturating_sub(new_size);
 
         self.metrics.record_local_change();
+        log::debug!("SYNTHESIS: Constraint shrunk space by {} nodes", removed);
 
         ConstraintEffect::Shrunk { removed_nodes: removed }
     }
@@ -180,9 +184,11 @@ impl IncrementalSynthesizer for IncrementalConstraintSynthesizer {
         }
 
         if !self.constraints[constraint_id].active {
+            log::debug!("SYNTHESIS: Constraint {} already inactive", constraint_id);
             return Some(ConstraintEffect::NoEffect);
         }
 
+        log::debug!("SYNTHESIS: Removing constraint {}", constraint_id);
         // Mark as inactive
         self.constraints[constraint_id].active = false;
 
@@ -201,10 +207,12 @@ impl IncrementalSynthesizer for IncrementalConstraintSynthesizer {
         self.solution_space = new_space;
 
         if new_size > old_size {
+            log::debug!("SYNTHESIS: Solution space expanded by {} nodes", new_size - old_size);
             Some(ConstraintEffect::Shrunk {
                 removed_nodes: new_size - old_size, // Actually grew
             })
         } else {
+            log::debug!("SYNTHESIS: Solution space unchanged after removing constraint");
             Some(ConstraintEffect::NoEffect)
         }
     }
