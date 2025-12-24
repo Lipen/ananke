@@ -13,7 +13,7 @@ use model_checking::transition::{TransitionSystem, Var};
 
 use crate::delta::{Delta, DeltaEffect};
 use crate::metrics::{IncrementalMetricsData, MetricsCollector};
-use crate::traits::{IncrementalFixpoint, IncrementalTransitionSystem};
+use crate::traits::{FixpointUpdate, IncrementalFixpoint, IncrementalTransitionSystem};
 
 /// An incremental transition system that tracks reachability state.
 pub struct IncrementalTransSystem {
@@ -420,7 +420,7 @@ impl IncrementalReachabilityFixpoint {
     }
 
     /// Add transitions and incrementally update the fixpoint.
-    pub fn add_transitions(&mut self, added: Ref) -> crate::traits::FixpointUpdate {
+    pub fn add_transitions(&mut self, added: Ref) -> FixpointUpdate {
         use crate::traits::FixpointUpdate;
 
         if !self.is_valid {
@@ -455,7 +455,7 @@ impl IncrementalReachabilityFixpoint {
     }
 
     /// Remove transitions and update the fixpoint.
-    pub fn remove_transitions(&mut self, removed: Ref) -> crate::traits::FixpointUpdate {
+    pub fn remove_transitions(&mut self, removed: Ref) -> FixpointUpdate {
         use crate::traits::FixpointUpdate;
 
         if !self.is_valid {
@@ -493,7 +493,7 @@ impl IncrementalReachabilityFixpoint {
     }
 }
 
-impl crate::traits::IncrementalFixpoint for IncrementalReachabilityFixpoint {
+impl IncrementalFixpoint for IncrementalReachabilityFixpoint {
     fn compute(&mut self) -> Ref {
         log::debug!("FIXPOINT: Starting fixpoint computation");
         let start = Instant::now();
@@ -528,9 +528,7 @@ impl crate::traits::IncrementalFixpoint for IncrementalReachabilityFixpoint {
         self.current
     }
 
-    fn apply_delta(&mut self, delta: Delta) -> crate::traits::FixpointUpdate {
-        use crate::traits::FixpointUpdate;
-
+    fn apply_delta(&mut self, delta: Delta) -> FixpointUpdate {
         log::debug!("FIXPOINT: Applying delta");
         // Handle transition changes
         let effect = self.ts.update_transitions(delta);
@@ -563,10 +561,10 @@ impl crate::traits::IncrementalFixpoint for IncrementalReachabilityFixpoint {
         self.is_valid
     }
 
-    fn recompute(&mut self) -> crate::traits::FixpointUpdate {
+    fn recompute(&mut self) -> FixpointUpdate {
         self.is_valid = false;
         self.compute();
-        crate::traits::FixpointUpdate::FullyRecomputed {
+        FixpointUpdate::FullyRecomputed {
             total_iterations: self.iterations,
         }
     }
