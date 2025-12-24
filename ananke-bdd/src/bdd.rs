@@ -1203,17 +1203,15 @@ impl Bdd {
     /// ```
     pub fn mk_cube(&self, literals: impl IntoIterator<Item = impl Into<Lit>>) -> Ref {
         let mut literals: Vec<Lit> = literals.into_iter().map(|l| l.into()).collect();
-        // Sort by variable ID to ensure consistent ordering
-        literals.sort_by_key(|lit| lit.var().id());
         debug!("cube(literals = {:?})", literals);
 
-        // Register all variables in sorted order BEFORE reversing
-        // This ensures variables get the correct levels (lower ID = lower level = closer to root)
+        // First, register all variables to ensure they all have levels
         for lit in &literals {
             self.register_variable(lit.var().id());
         }
 
-        // TODO: instead of sorting before registering, we should first register, and then sort by level
+        // Sort with respect to the variable ordering
+        literals.sort_unstable_by(|a, b| self.var_cmp(a.var(), b.var()));
 
         // Now reverse and build bottom-up
         literals.reverse();
@@ -1265,15 +1263,15 @@ impl Bdd {
     /// ```
     pub fn mk_clause(&self, literals: impl IntoIterator<Item = impl Into<Lit>>) -> Ref {
         let mut literals: Vec<Lit> = literals.into_iter().map(|l| l.into()).collect();
-        // Sort by variable ID to ensure consistent ordering
-        literals.sort_by_key(|lit| lit.var().id());
         debug!("clause(literals = {:?})", literals);
 
-        // Register all variables in sorted order BEFORE reversing
-        // This ensures variables get the correct levels (lower ID = lower level = closer to root)
+        // First, register all variables to ensure they all have levels
         for lit in &literals {
             self.register_variable(lit.var().id());
         }
+
+        // Sort with respect to the variable ordering
+        literals.sort_unstable_by(|a, b| self.var_cmp(a.var(), b.var()));
 
         // Now reverse and build bottom-up
         literals.reverse();
@@ -3342,6 +3340,104 @@ mod tests {
         let f = bdd.apply_or(bdd.apply_or(x1, -x2), -x3);
         let clause = bdd.mk_clause([1, -2, -3]);
         assert_eq!(f, clause);
+    }
+
+    #[test]
+    fn test_cube_with_preallocated_vars_different_order() {
+        // This test ensures mk_cube correctly sorts by LEVEL, not by variable ID.
+        // We pre-allocate variables in reverse order (3, 2, 1) so their levels are:
+        //   var 3 -> level 0
+        //   var 2 -> level 1
+        //   var 1 -> level 2
+        // Then we call mk_cube with variables in natural order (1, 2, 3),
+        // forcing the implementation to sort by level.
+        let bdd = Bdd::default();
+
+        // Pre-allocate in reverse order
+        let x3 = bdd.mk_var(3);
+        let x2 = bdd.mk_var(2);
+        let x1 = bdd.mk_var(1);
+
+        // Build cube via apply_and: this respects the level ordering
+        let expected = bdd.apply_and(bdd.apply_and(x1, x2), x3);
+
+        // Call mk_cube with variables in natural order [1, 2, 3]
+        // mk_cube must internally sort by level to get the same result
+        let cube = bdd.mk_cube([1, 2, 3]);
+
+        assert_eq!(expected, cube, "mk_cube should sort by level, not ID");
+    }
+
+    #[test]
+    fn test_clause_with_preallocated_vars_different_order() {
+        // This test ensures mk_clause correctly sorts by LEVEL, not by variable ID.
+        // We pre-allocate variables in reverse order (3, 2, 1) so their levels are:
+        //   var 3 -> level 0
+        //   var 2 -> level 1
+        //   var 1 -> level 2
+        // Then we call mk_clause with variables in natural order (1, 2, 3),
+        // forcing the implementation to sort by level.
+        let bdd = Bdd::default();
+
+        // Pre-allocate in reverse order
+        let x3 = bdd.mk_var(3);
+        let x2 = bdd.mk_var(2);
+        let x1 = bdd.mk_var(1);
+
+        // Build clause via apply_or: this respects the level ordering
+        let expected = bdd.apply_or(bdd.apply_or(x1, x2), x3);
+
+        // Call mk_clause with variables in natural order [1, 2, 3]
+        // mk_clause must internally sort by level to get the same result
+        let clause = bdd.mk_clause([1, 2, 3]);
+
+        assert_eq!(expected, clause, "mk_clause should sort by level, not ID");
+    }
+
+    #[test]
+    fn test_cube_with_arbitrary_allocation_order() {
+        // Test with an even more complex allocation pattern: 2, 3, 1
+        // Levels will be: var 2 -> 0, var 3 -> 1, var 1 -> 2
+        let bdd = Bdd::default();
+
+        let x2 = bdd.mk_var(2);
+        let x3 = bdd.mk_var(3);
+        let x1 = bdd.mk_var(1);
+
+        // Build via apply_and
+        let expected = bdd.apply_and(bdd.apply_and(x1, x2), x3);
+
+        // Call mk_cube with literals in various orders
+        let cube1 = bdd.mk_cube([1, 2, 3]);
+        let cube2 = bdd.mk_cube([3, 1, 2]);
+        let cube3 = bdd.mk_cube([2, 3, 1]);
+
+        assert_eq!(expected, cube1);
+        assert_eq!(expected, cube2);
+        assert_eq!(expected, cube3);
+    }
+
+    #[test]
+    fn test_clause_with_arbitrary_allocation_order() {
+        // Test with an even more complex allocation pattern: 2, 3, 1
+        // Levels will be: var 2 -> 0, var 3 -> 1, var 1 -> 2
+        let bdd = Bdd::default();
+
+        let x2 = bdd.mk_var(2);
+        let x3 = bdd.mk_var(3);
+        let x1 = bdd.mk_var(1);
+
+        // Build via apply_or
+        let expected = bdd.apply_or(bdd.apply_or(x1, x2), x3);
+
+        // Call mk_clause with literals in various orders
+        let clause1 = bdd.mk_clause([1, 2, 3]);
+        let clause2 = bdd.mk_clause([3, 1, 2]);
+        let clause3 = bdd.mk_clause([2, 3, 1]);
+
+        assert_eq!(expected, clause1);
+        assert_eq!(expected, clause2);
+        assert_eq!(expected, clause3);
     }
 
     #[test]
