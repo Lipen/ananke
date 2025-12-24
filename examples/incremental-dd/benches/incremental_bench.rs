@@ -8,7 +8,7 @@ use std::rc::Rc;
 
 use ananke_bdd::bdd::Bdd;
 use ananke_bdd::reference::Ref;
-use ananke_bdd::types::Var;
+use ananke_bdd::types::{Lit, Var};
 use criterion::{black_box, criterion_group, criterion_main, BenchmarkId, Criterion};
 use incremental_dd::synthesis::IncrementalConstraintSynthesizer;
 use incremental_dd::traits::IncrementalSynthesizer;
@@ -19,11 +19,11 @@ fn make_constraint(bdd: &Bdd, i: u32, num_vars: u32) -> Ref {
     let v2 = Var::new(((i + 1) % num_vars) + 1);
     let v3 = Var::new(((i + 2) % num_vars) + 1);
 
-    let lit1 = if i % 2 == 0 { bdd.mk_var(v1) } else { -bdd.mk_var(v1) };
-    let lit2 = bdd.mk_var(v2);
-    let lit3 = -bdd.mk_var(v3);
+    let lit1 = Lit::new(v1, i % 2 != 0);
+    let lit2 = Lit::new(v2, false);
+    let lit3 = Lit::new(v3, true);
 
-    bdd.apply_or(bdd.apply_or(lit1, lit2), lit3)
+    bdd.mk_clause([lit1, lit2, lit3])
 }
 
 /// Benchmark adding ONE constraint to an existing system.
@@ -38,7 +38,8 @@ fn bench_single_constraint_addition(c: &mut Criterion) {
     for num_existing in [10, 20, 50, 100] {
         let num_vars = 20u32;
         let bdd = Rc::new(Bdd::default());
-        let vars: Vec<Var> = (1..=num_vars).map(Var::new).collect();
+        let vars: Vec<Var> = (1..=num_vars).map(|_| bdd.allocate_variable()).collect();
+        assert_eq!(bdd.num_levels(), num_vars as usize);
 
         // Pre-generate all constraints
         let existing_constraints: Vec<Ref> = (0..num_existing).map(|i| make_constraint(&bdd, i, num_vars)).collect();
