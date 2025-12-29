@@ -11,8 +11,8 @@ use std::sync::Arc;
 use rustc_hash::{FxHashMap, FxHasher};
 
 use crate::interaction::InteractionFunction;
-use crate::variable::{Var, VarSet};
 use crate::partition::Partition;
+use crate::variable::{Var, VarSet};
 
 /// A node in the Canonical Interaction Graph.
 #[derive(Clone, PartialEq, Eq)]
@@ -198,12 +198,8 @@ impl CigNode {
     /// variables form a block.
     pub fn extract_partition(&self) -> Partition {
         match &self.kind {
-            CigNodeKind::Constant(_) => {
-                Partition::from_blocks(vec![])
-            }
-            CigNodeKind::Leaf(v) => {
-                Partition::indiscrete(VarSet::singleton(*v))
-            }
+            CigNodeKind::Constant(_) => Partition::from_blocks(vec![]),
+            CigNodeKind::Leaf(v) => Partition::indiscrete(VarSet::singleton(*v)),
             CigNodeKind::Internal { children, .. } => {
                 let blocks: Vec<VarSet> = children
                     .iter()
