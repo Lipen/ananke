@@ -8,7 +8,7 @@
 //!
 //! Run with: cargo run --example basic
 
-use cig::{CigBuilder, Partition, TruthTable, Var};
+use cig::{CigBuilder, Partition, TruthTable, Var, VarSet};
 
 fn main() {
     println!();
