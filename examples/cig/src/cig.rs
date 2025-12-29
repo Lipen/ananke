@@ -11,7 +11,8 @@ use std::sync::Arc;
 use rustc_hash::{FxHashMap, FxHasher};
 
 use crate::interaction::InteractionFunction;
-use crate::variable::Var;
+use crate::variable::{Var, VarSet};
+use crate::partition::Partition;
 
 /// A node in the Canonical Interaction Graph.
 #[derive(Clone, PartialEq, Eq)]
@@ -189,6 +190,32 @@ impl CigNode {
             CigNodeKind::Internal { interaction, children } => interaction.size() + children.iter().map(|c| c.table_size()).sum::<usize>(),
         }
     }
+
+    /// Extract the partition of variables represented by this CIG node.
+    ///
+    /// Returns a Partition where the blocks represent the grouping of variables
+    /// at the top level of this node. If this is an internal node, each child's
+    /// variables form a block.
+    pub fn extract_partition(&self) -> Partition {
+        match &self.kind {
+            CigNodeKind::Constant(_) => {
+                Partition::from_blocks(vec![])
+            }
+            CigNodeKind::Leaf(v) => {
+                Partition::indiscrete(VarSet::singleton(*v))
+            }
+            CigNodeKind::Internal { children, .. } => {
+                let blocks: Vec<VarSet> = children
+                    .iter()
+                    .map(|child| {
+                        let vars = child.variables();
+                        VarSet::from_iter(vars)
+                    })
+                    .collect();
+                Partition::from_blocks(blocks)
+            }
+        }
+    }
 }
 
 impl fmt::Debug for CigNode {
@@ -311,6 +338,11 @@ impl Cig {
     /// Get the canonical hash.
     pub fn canonical_hash(&self) -> u64 {
         self.root.hash
+    }
+
+    /// Extract the partition of variables represented by this CIG.
+    pub fn extract_partition(&self) -> Partition {
+        self.root.extract_partition()
     }
 }
 
