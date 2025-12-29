@@ -3,7 +3,7 @@
 //! Implements Examples 3.10, 4.8, 4.9, 4.10, 4.11 from the specification.
 //! Run with: cargo run --example documentation
 
-use cig::{CigBuilder, TruthTable};
+use cig::{CigBuilder, Partition, TruthTable, Var, VarSet};
 
 fn main() {
     println!("═══════════════════════════════════════════════════════════");
@@ -18,11 +18,16 @@ fn main() {
 
     let f_3_10 = TruthTable::from_expr(3, |x| (x[0] && x[1]) ^ x[2]);
     let cig = builder.build(&f_3_10);
+    println!("{}", cig);
 
     println!("Analysis:");
-    println!("  Partition: {{x1, x2}}, {{x3}}");
-    println!("  Separable via XOR");
+    let partition = cig.extract_partition();
+    println!("  Partition: {}", partition);
     println!("  CIG nodes: {}, depth: {}\n", cig.size(), cig.depth());
+
+    // Assert the partition structure
+    let expected = Partition::from_blocks(vec![VarSet::from_iter([Var(1), Var(2)]), VarSet::from_iter([Var(3)])]);
+    assert_eq!(partition, expected);
 
     // Example 4.8
     println!("Example 4.8: Parity Function");
@@ -32,9 +37,21 @@ fn main() {
     let cig = builder.build(&parity_5);
 
     println!("Analysis:");
+    let partition = cig.extract_partition();
+    println!("  Partition: {}", partition);
     println!("  All variables independent");
     println!("  Fully separable");
     println!("  CIG nodes: {}, depth: {}\n", cig.size(), cig.depth());
+
+    // Assert the partition structure - each variable in its own block
+    let expected = Partition::from_blocks(vec![
+        VarSet::from_iter([Var(1)]),
+        VarSet::from_iter([Var(2)]),
+        VarSet::from_iter([Var(3)]),
+        VarSet::from_iter([Var(4)]),
+        VarSet::from_iter([Var(5)]),
+    ]);
+    assert_eq!(partition, expected);
 
     // Example 4.9
     println!("Example 4.9: Majority Function");
@@ -45,9 +62,15 @@ fn main() {
     let cig = builder.build(&maj_3);
 
     println!("Analysis:");
+    let partition = cig.extract_partition();
+    println!("  Partition: {}", partition);
     println!("  All variables interact irreducibly");
     println!("  NOT separable");
     println!("  CIG nodes: {}, depth: {}\n", cig.size(), cig.depth());
+
+    // Assert the partition structure - all variables in one block (non-separable)
+    let expected = Partition::from_blocks(vec![VarSet::from_iter([Var(1), Var(2), Var(3)])]);
+    assert_eq!(partition, expected);
 
     // Example 4.10
     println!("Example 4.10: Multiplexer");
@@ -57,9 +80,15 @@ fn main() {
     let cig = builder.build(&mux);
 
     println!("Analysis:");
+    let partition = cig.extract_partition();
+    println!("  Partition: {}", partition);
     println!("  All variables interact");
     println!("  Cannot separate over any 2-1 partition");
     println!("  CIG nodes: {}, depth: {}\n", cig.size(), cig.depth());
+
+    // Assert the partition structure - all variables in one block (non-separable)
+    let expected = Partition::from_blocks(vec![VarSet::from_iter([Var(1), Var(2), Var(3)])]);
+    assert_eq!(partition, expected);
 
     // Example 4.11
     println!("Example 4.11: Composed Function");
@@ -69,9 +98,14 @@ fn main() {
     let cig = builder.build(&composed);
 
     println!("Analysis:");
-    println!("  Partition: {{x1, x2}}, {{x3, x4}}");
+    let partition = cig.extract_partition();
+    println!("  Partition: {}", partition);
     println!("  Separable at root via AND");
     println!("  CIG nodes: {}, depth: {}\n", cig.size(), cig.depth());
+
+    // Assert the partition structure
+    let expected = Partition::from_blocks(vec![VarSet::from_iter([Var(1), Var(2)]), VarSet::from_iter([Var(3), Var(4)])]);
+    assert_eq!(partition, expected);
 
     println!("───────────────────────────────────────────────────────────");
     println!("                            SUMMARY");
