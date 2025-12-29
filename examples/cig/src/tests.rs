@@ -1,6 +1,6 @@
 //! Integration tests for the CIG crate.
 
-use crate::analysis::CigAnalysis;
+use crate::analysis::{CigAnalysis, ComplexityClass};
 use crate::builder::CigBuilder;
 use crate::truth_table::{named, TruthTable};
 use crate::variable::Var;
@@ -14,9 +14,12 @@ fn test_full_workflow() {
         ("zero", TruthTable::zero(3)),
         ("one", TruthTable::one(3)),
         ("x1", TruthTable::var(3, Var(1))),
-        ("and", named::and_all(3)),
-        ("or", named::or_all(3)),
-        ("xor", named::xor_all(3)),
+        ("and", named::and_all(2)),
+        ("or", named::or_all(2)),
+        ("xor", named::xor_all(2)),
+        ("and3", named::and_all(3)),
+        ("or3", named::or_all(3)),
+        ("xor3", named::xor_all(3)),
         ("maj3", named::majority3()),
         ("mux", named::mux()),
     ];
@@ -30,6 +33,11 @@ fn test_full_workflow() {
         println!("  Depth: {}", analysis.depth);
         println!("  Width: {}", analysis.interaction_width);
         println!("  Class: {}", analysis.complexity_class);
+        println!("  Operators: {:?}", analysis.operators_used);
+        println!("  {:?}", cig);
+        for line in format!("{}", cig).lines() {
+            println!("  {}", line);
+        }
         println!();
     }
 }
@@ -78,10 +86,12 @@ fn test_complexity_bounds() {
     assert_eq!(analysis.interaction_width, 3, "MAJ3 should have width 3");
     assert!(analysis.bdd_width_lower_bound() >= 4, "BDD width bound for MAJ3");
 
-    // XOR should have low interaction width
+    // XOR should be linear (regardless of interaction width)
+    // N-ary XOR has width = arity, but is still a linear function
     let xor = named::xor_all(4);
     let cig = builder.build(&xor);
     let analysis = CigAnalysis::analyze(&cig);
 
-    assert!(analysis.interaction_width <= 2, "XOR should be separable");
+    assert_eq!(analysis.interaction_width, 4, "4-ary XOR should have width 4");
+    assert_eq!(analysis.complexity_class, ComplexityClass::Linear, "XOR should be linear");
 }

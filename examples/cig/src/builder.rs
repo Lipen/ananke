@@ -5,7 +5,7 @@
 
 use std::sync::Arc;
 
-use crate::cig::{Cig, CigNode, UniqueTable};
+use crate::cig::{Cig, CigNode, CigNodeKind, UniqueTable};
 use crate::interaction::InteractionFunction;
 use crate::partition::Partition;
 use crate::separability::{find_interaction_partition, Operator};
@@ -55,7 +55,6 @@ impl CigBuilder {
         if vars.len() == 1 {
             let var = vars.iter().next().unwrap();
             // Check if it's the variable or its negation
-            // We need to evaluate at an assignment where var=true
             let mut assignment = vec![false; f.num_vars() as usize];
             assignment[var.position()] = true;
             if f.eval(&assignment) {
@@ -76,7 +75,7 @@ impl CigBuilder {
             return self.build_irreducible(f, &vars);
         }
 
-        // Separable: build children for each block and combine
+        // Separable: build with flattening for canonicity
         self.build_separable(f, &partition)
     }
 
@@ -109,49 +108,103 @@ impl CigBuilder {
         self.unique_table.internal(interaction, sorted_children)
     }
 
-    /// Build a node for a separable function.
+    /// Build a node for a separable function with proper n-ary flattening.
+    ///
+    /// This ensures canonicity by:
+    /// 1. Finding the separating operator between blocks
+    /// 2. Recursively building children
+    /// 3. Flattening any children that use the same operator
+    /// 4. Sorting all children by canonical hash
     fn build_separable(&mut self, f: &TruthTable, partition: &Partition) -> Arc<CigNode> {
         let blocks = partition.blocks();
 
-        if blocks.len() == 2 {
-            // Binary separation: find the operator and subfunctions
-            return self.build_binary_separable(f, &blocks[0], &blocks[1]);
-        }
+        // For 2+ blocks, we need to find the separating operator
+        // We test separation between first block and rest
+        let first = &blocks[0];
+        let rest_vars: VarSet = blocks[1..].iter().fold(VarSet::empty(), |acc, b| acc.union(b));
 
-        // Multi-way separation: recursively combine pairs
-        // For now, we do a simple left-to-right combination
-        self.build_multiway_separable(f, blocks)
-    }
-
-    /// Build a binary separable node.
-    fn build_binary_separable(&mut self, f: &TruthTable, a_vars: &VarSet, b_vars: &VarSet) -> Arc<CigNode> {
-        // Find the separating operator
-        let result = test_separability_on_function(f, a_vars, b_vars);
-
+        let result = test_separability_on_function(f, first, &rest_vars);
         if !result.is_separable {
-            // Shouldn't happen if partition is correct
-            panic!("Expected separable function");
+            panic!("Expected separable function but separability test failed");
         }
 
         let op = result.operator.unwrap();
         let g = result.g.unwrap();
         let h = result.h.unwrap();
 
-        // Recursively build children
-        let child_a = self.build_from_subfunction(&g, a_vars);
-        let child_b = self.build_from_subfunction(&h, b_vars);
+        // Build children recursively
+        let child_a = self.build_from_subfunction(&g, first);
+        let child_b = self.build_from_subfunction(&h, &rest_vars);
 
-        // Create interaction function
-        let interaction = InteractionFunction::from_operator(op);
+        // CRITICAL: Flatten children that use the same operator
+        // This is what ensures canonicity for commutative operators
+        let mut all_children = Vec::new();
+        self.collect_flattened_children(&child_a, op, &mut all_children);
+        self.collect_flattened_children(&child_b, op, &mut all_children);
 
-        // Order children canonically by hash
-        let (c1, c2) = if child_a.canonical_hash() <= child_b.canonical_hash() {
-            (child_a, child_b)
-        } else {
-            (child_b, child_a)
+        // Sort children by canonical hash for uniqueness
+        all_children.sort_by_key(|c| c.canonical_hash());
+
+        // Create n-ary interaction function
+        let interaction = match op {
+            Operator::And => InteractionFunction::and_all(all_children.len() as u32),
+            Operator::Or => InteractionFunction::or_all(all_children.len() as u32),
+            Operator::Xor => InteractionFunction::xor_all(all_children.len() as u32),
         };
 
-        self.unique_table.internal(interaction, vec![c1, c2])
+        self.unique_table.internal(interaction, all_children)
+    }
+
+    /// Collect children, flattening nodes that use the same operator.
+    ///
+    /// If `node` is an internal node with the same operator, we recursively
+    /// collect its children. Otherwise, we add the node itself.
+    fn collect_flattened_children(&self, node: &Arc<CigNode>, op: Operator, children: &mut Vec<Arc<CigNode>>) {
+        if let CigNodeKind::Internal {
+            interaction,
+            children: node_children,
+        } = &node.kind
+        {
+            // Check if this node uses the same operator
+            if let Some(node_op) = self.get_commutative_operator(interaction) {
+                if node_op == op {
+                    // Same operator: flatten by collecting this node's children
+                    for child in node_children {
+                        self.collect_flattened_children(child, op, children);
+                    }
+                    return;
+                }
+            }
+        }
+
+        // Different operator or leaf: add as-is
+        children.push(node.clone());
+    }
+
+    /// Get the commutative operator if the interaction is one of AND/OR/XOR.
+    fn get_commutative_operator(&self, interaction: &InteractionFunction) -> Option<Operator> {
+        // Check if it's a pure AND/OR/XOR (any arity)
+        let arity = interaction.arity();
+
+        // Check AND
+        let and_func = InteractionFunction::and_all(arity);
+        if interaction == &and_func {
+            return Some(Operator::And);
+        }
+
+        // Check OR
+        let or_func = InteractionFunction::or_all(arity);
+        if interaction == &or_func {
+            return Some(Operator::Or);
+        }
+
+        // Check XOR
+        let xor_func = InteractionFunction::xor_all(arity);
+        if interaction == &xor_func {
+            return Some(Operator::Xor);
+        }
+
+        None
     }
 
     /// Build from a subfunction on a specific variable set.
@@ -196,24 +249,15 @@ impl CigBuilder {
         self.build_recursive(&f_remapped)
     }
 
-    /// Build a multi-way separable node.
-    fn build_multiway_separable(&mut self, f: &TruthTable, blocks: &[VarSet]) -> Arc<CigNode> {
-        if blocks.len() == 1 {
-            return self.build_irreducible(f, &blocks[0]);
-        }
-
-        // Split into first block vs rest
-        let first = &blocks[0];
-        let rest_vars: VarSet = blocks[1..].iter().fold(VarSet::empty(), |acc, b| acc.union(b));
-
-        self.build_binary_separable(f, first, &rest_vars)
-    }
-
     /// Get statistics about the builder.
     pub fn stats(&self) -> crate::cig::UniqueTableStats {
         self.unique_table.stats()
     }
 }
+
+// ============================================================================
+// Helper functions for separability testing
+// ============================================================================
 
 /// Helper to test separability for CIG construction.
 fn test_separability_on_function(f: &TruthTable, a_vars: &VarSet, b_vars: &VarSet) -> SeparabilityResult {
@@ -354,7 +398,6 @@ fn check_xor_rank_1(matrix: &[Vec<bool>]) -> Option<(Vec<bool>, Vec<bool>)> {
     }
 
     let rows = matrix.len();
-    let _cols = matrix[0].len();
 
     let mut u = vec![false; rows];
     let v: Vec<bool> = matrix[0].clone();
@@ -415,8 +458,41 @@ mod tests {
 
         // Should be separable
         assert!(cig.root().is_internal());
+        assert_eq!(cig.root().num_children(), 2);
 
         println!("XOR CIG:\n{}", cig);
+    }
+
+    #[test]
+    fn test_build_parity_3_is_flat() {
+        let mut builder = CigBuilder::new();
+
+        // x₁ ⊕ x₂ ⊕ x₃ - should be a FLAT 3-ary XOR
+        let f = TruthTable::from_expr(3, |x| x[0] ^ x[1] ^ x[2]);
+        let cig = builder.build(&f);
+
+        println!("Parity-3 CIG:\n{}", cig);
+
+        // MUST be a single internal node with 3 children (not nested binary)
+        assert!(cig.root().is_internal());
+        assert_eq!(cig.root().num_children(), 3, "Parity-3 must have 3 children (flat n-ary)");
+        assert_eq!(cig.depth(), 1, "Parity-3 must have depth 1 (flat)");
+    }
+
+    #[test]
+    fn test_build_parity_5_is_flat() {
+        let mut builder = CigBuilder::new();
+
+        // x₁ ⊕ x₂ ⊕ x₃ ⊕ x₄ ⊕ x₅ - should be a FLAT 5-ary XOR
+        let f = TruthTable::from_expr(5, |x| x.iter().fold(false, |acc, &b| acc ^ b));
+        let cig = builder.build(&f);
+
+        println!("Parity-5 CIG:\n{}", cig);
+
+        // MUST be a single internal node with 5 children (not nested binary)
+        assert!(cig.root().is_internal());
+        assert_eq!(cig.root().num_children(), 5, "Parity-5 must have 5 children (flat n-ary)");
+        assert_eq!(cig.depth(), 1, "Parity-5 must have depth 1 (flat)");
     }
 
     #[test]
@@ -446,6 +522,9 @@ mod tests {
         println!("Size: {}", cig.size());
         println!("Depth: {}", cig.depth());
         println!("Width: {}", cig.interaction_width());
+
+        // Root should be AND with 2 children (the two XOR subtrees)
+        assert_eq!(cig.root().num_children(), 2);
     }
 
     #[test]
@@ -460,5 +539,33 @@ mod tests {
         let cig2 = builder.build(&f2);
 
         assert!(cig1.equivalent(&cig2));
+    }
+
+    #[test]
+    fn test_canonicity_xor_order_independence() {
+        let mut builder = CigBuilder::new();
+
+        // Build x1 ⊕ x2 ⊕ x3 in different "conceptual orders"
+        // They should all produce the SAME canonical CIG
+
+        let f1 = TruthTable::from_expr(3, |x| x[0] ^ x[1] ^ x[2]);
+        let f2 = TruthTable::from_expr(3, |x| x[2] ^ x[0] ^ x[1]);
+        let f3 = TruthTable::from_expr(3, |x| (x[0] ^ x[1]) ^ x[2]);
+        let f4 = TruthTable::from_expr(3, |x| x[0] ^ (x[1] ^ x[2]));
+
+        let cig1 = builder.build(&f1);
+        let cig2 = builder.build(&f2);
+        let cig3 = builder.build(&f3);
+        let cig4 = builder.build(&f4);
+
+        // All should be equivalent
+        assert!(cig1.equivalent(&cig2), "f1 ≡ f2");
+        assert!(cig1.equivalent(&cig3), "f1 ≡ f3");
+        assert!(cig1.equivalent(&cig4), "f1 ≡ f4");
+
+        // All should have the same structure (pointer equality from unique table)
+        assert_eq!(cig1.canonical_hash(), cig2.canonical_hash());
+        assert_eq!(cig1.canonical_hash(), cig3.canonical_hash());
+        assert_eq!(cig1.canonical_hash(), cig4.canonical_hash());
     }
 }

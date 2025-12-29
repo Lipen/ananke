@@ -77,7 +77,11 @@ fn count_nodes(node: &CigNode, internal: &mut usize, leaves: &mut usize, operato
         CigNodeKind::Leaf(_) => *leaves += 1,
         CigNodeKind::Internal { interaction, children } => {
             *internal += 1;
-            if let Some(op) = interaction.as_binary_operator() {
+            // Try to recognize symmetric operators (AND/OR/XOR) of any arity
+            if let Some(op) = interaction.as_symmetric_operator() {
+                operators.push(op);
+            } else if let Some(op) = interaction.as_binary_operator() {
+                // Fallback to binary operator check
                 operators.push(op);
             }
             for child in children {
@@ -125,31 +129,42 @@ impl fmt::Display for ComplexityClass {
 }
 
 fn classify(width: usize, depth: usize, operators: &[Operator], num_vars: usize) -> ComplexityClass {
+    // Constant function
     if num_vars == 0 {
         return ComplexityClass::Constant;
     }
 
-    if num_vars == 1 && depth <= 1 {
+    // Single variable functions
+    if num_vars == 1 {
+        assert!(depth <= 1, "Single variable CIG must have depth <= 1, got depth {}", depth);
         return ComplexityClass::Projection;
     }
 
-    // Check if all operators are XOR
-    let all_xor = operators.iter().all(|&op| op == Operator::Xor);
-    if all_xor && width <= 2 {
+    // Multi-variable functions
+    // If operators is empty, it must use non-standard interaction (irreducible)
+    if operators.is_empty() {
+        return ComplexityClass::Irreducible;
+    }
+
+    // Classification order prioritizes operator type over width:
+    // 1. Linear: XOR functions are linear regardless of arity (x1 ⊕ x2 ⊕ ... ⊕ xn)
+    if operators.iter().all(|&op| op == Operator::Xor) {
         return ComplexityClass::Linear;
     }
 
-    // Check if all operators are AND/OR
-    let all_monotone = operators.iter().all(|&op| op == Operator::And || op == Operator::Or);
-    if all_monotone && width <= 2 {
+    // 2. Monotone: AND/OR functions are monotone regardless of arity
+    //    (e.g., x1 ∧ x2 ∧ x3 can be decomposed as (x1 ∧ x2) ∧ x3, always separable)
+    if operators.iter().all(|&op| op == Operator::And || op == Operator::Or) {
         return ComplexityClass::Monotone;
     }
 
-    // Check interaction width
+    // 3. Separable: width <= 2 (low interaction, mixed operators)
     if width <= 2 {
         return ComplexityClass::Separable;
     }
 
+    // 4. Irreducible: width > 2 with non-pure operators (mixed AND/OR)
+    //    (e.g., majority functions: width 3, non-separable structure)
     ComplexityClass::Irreducible
 }
 
@@ -265,5 +280,53 @@ mod tests {
         println!("{}", report);
         assert!(report.contains("Variables:"));
         assert!(report.contains("Depth:"));
+    }
+
+    #[test]
+    fn test_nary_and_is_monotone() {
+        let mut builder = CigBuilder::new();
+        // 3-ary AND: should be Monotone, not Irreducible
+        let f = TruthTable::from_expr(3, |x| x[0] && x[1] && x[2]);
+        let cig = builder.build(&f);
+        let analysis = CigAnalysis::analyze(&cig);
+
+        assert_eq!(analysis.interaction_width, 3, "3-ary AND should have width 3");
+        assert_eq!(
+            analysis.complexity_class,
+            ComplexityClass::Monotone,
+            "3-ary AND should be Monotone (AND-tree), not Irreducible"
+        );
+    }
+
+    #[test]
+    fn test_nary_or_is_monotone() {
+        let mut builder = CigBuilder::new();
+        // 4-ary OR: should be Monotone, not Irreducible
+        let f = TruthTable::from_expr(4, |x| x[0] || x[1] || x[2] || x[3]);
+        let cig = builder.build(&f);
+        let analysis = CigAnalysis::analyze(&cig);
+
+        assert_eq!(analysis.interaction_width, 4, "4-ary OR should have width 4");
+        assert_eq!(
+            analysis.complexity_class,
+            ComplexityClass::Monotone,
+            "4-ary OR should be Monotone (OR-tree), not Irreducible"
+        );
+    }
+
+    #[test]
+    fn test_majority_is_irreducible() {
+        let mut builder = CigBuilder::new();
+        // Majority is non-monotone with width 3: truly irreducible
+        let f = named::majority3();
+        let cig = builder.build(&f);
+        let analysis = CigAnalysis::analyze(&cig);
+
+        assert_eq!(analysis.interaction_width, 3, "MAJ3 should have width 3");
+        assert_eq!(
+            analysis.complexity_class,
+            ComplexityClass::Irreducible,
+            "Majority should be Irreducible (mixed operators, not pure AND/OR/XOR)"
+        );
     }
 }

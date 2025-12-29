@@ -40,14 +40,17 @@ fn main() {
     println!("Analysis:");
     let partition = cig.extract_partition();
     println!("  Partition: {}", partition);
-    println!("  Hierarchical structure due to right-associativity");
-    println!("  Top level: x1 vs (x2 XOR (x3 XOR (x4 XOR x5)))");
+    println!("  N-ary XOR: all variables are direct children (flat structure)");
+    println!("  Canonical form ensures unique representation");
     println!("  CIG nodes: {}, depth: {}\n", cig.size(), cig.depth());
 
-    // Assert the partition structure - right-associative nesting
+    // Assert the partition structure - n-ary flattening produces individual blocks
     let expected = Partition::from_blocks(vec![
         VarSet::from_iter([Var(1)]),
-        VarSet::from_iter([Var(2), Var(3), Var(4), Var(5)]),
+        VarSet::from_iter([Var(2)]),
+        VarSet::from_iter([Var(3)]),
+        VarSet::from_iter([Var(4)]),
+        VarSet::from_iter([Var(5)]),
     ]);
     assert_eq!(partition, expected);
 

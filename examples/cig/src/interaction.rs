@@ -49,23 +49,28 @@ impl InteractionFunction {
     }
 
     /// Create a binary operator as an interaction function.
-    pub fn from_operator(op: Operator) -> Self {
-        InteractionFunction::from_expr(2, |x| op.apply(x[0], x[1]))
+    pub fn from_binary(op: Operator) -> Self {
+        InteractionFunction::from_expr(2, |xs| op.apply(xs[0], xs[1]))
+    }
+
+    /// Create a k-ary interaction function from a given operator.
+    pub fn from_op(op: Operator, arity: u32) -> Self {
+        InteractionFunction::from_expr(arity, |xs| op.apply_all(xs))
     }
 
     /// Create the AND interaction function on k inputs.
     pub fn and_all(arity: u32) -> Self {
-        InteractionFunction::from_expr(arity, |x| x.iter().all(|&b| b))
+        Self::from_op(Operator::And, arity)
     }
 
     /// Create the OR interaction function on k inputs.
     pub fn or_all(arity: u32) -> Self {
-        InteractionFunction::from_expr(arity, |x| x.iter().any(|&b| b))
+        Self::from_op(Operator::Or, arity)
     }
 
     /// Create the XOR interaction function on k inputs.
     pub fn xor_all(arity: u32) -> Self {
-        InteractionFunction::from_expr(arity, |x| x.iter().filter(|&&b| b).count() % 2 == 1)
+        Self::from_op(Operator::Xor, arity)
     }
 
     /// Get the arity (number of inputs).
@@ -116,7 +121,25 @@ impl InteractionFunction {
         }
 
         for op in Operator::all() {
-            let op_func = InteractionFunction::from_operator(op);
+            let op_func = InteractionFunction::from_binary(op);
+            if self.table == op_func.table {
+                return Some(op);
+            }
+        }
+        None
+    }
+
+    /// Check if this interaction function matches a symmetric operator (AND/OR/XOR) of any arity.
+    ///
+    /// Returns the operator if the function is exactly AND-all, OR-all, or XOR-all.
+    pub fn as_symmetric_operator(&self) -> Option<Operator> {
+        if self.arity < 2 {
+            return None;
+        }
+        // Check against n-ary versions of AND, OR, XOR
+        let arity = self.arity;
+        for op in Operator::all() {
+            let op_func = InteractionFunction::from_op(op, arity);
             if self.table == op_func.table {
                 return Some(op);
             }
@@ -182,17 +205,17 @@ mod tests {
 
     #[test]
     fn test_binary_operators() {
-        let and_f = InteractionFunction::from_operator(Operator::And);
+        let and_f = InteractionFunction::from_binary(Operator::And);
         assert_eq!(and_f.eval(&[false, false]), false);
         assert_eq!(and_f.eval(&[true, false]), false);
         assert_eq!(and_f.eval(&[false, true]), false);
         assert_eq!(and_f.eval(&[true, true]), true);
 
-        let or_f = InteractionFunction::from_operator(Operator::Or);
+        let or_f = InteractionFunction::from_binary(Operator::Or);
         assert_eq!(or_f.eval(&[false, false]), false);
         assert_eq!(or_f.eval(&[true, true]), true);
 
-        let xor_f = InteractionFunction::from_operator(Operator::Xor);
+        let xor_f = InteractionFunction::from_binary(Operator::Xor);
         assert_eq!(xor_f.eval(&[false, false]), false);
         assert_eq!(xor_f.eval(&[true, false]), true);
         assert_eq!(xor_f.eval(&[true, true]), false);
@@ -200,7 +223,7 @@ mod tests {
 
     #[test]
     fn test_recognition() {
-        let and_f = InteractionFunction::from_operator(Operator::And);
+        let and_f = InteractionFunction::from_binary(Operator::And);
         assert_eq!(and_f.as_binary_operator(), Some(Operator::And));
 
         let identity = InteractionFunction::identity();
@@ -222,7 +245,7 @@ mod tests {
     #[test]
     fn test_reorder() {
         // f(x, y) = x ∧ y
-        let f = InteractionFunction::from_operator(Operator::And);
+        let f = InteractionFunction::from_binary(Operator::And);
 
         // Swap inputs: f'(x, y) = f(y, x) = y ∧ x = x ∧ y
         let f_swapped = f.reorder(&[1, 0]);

@@ -60,6 +60,8 @@ impl CigNode {
 
     /// Create an internal node.
     pub fn internal(interaction: InteractionFunction, children: Vec<Arc<CigNode>>) -> Self {
+        assert!(!children.is_empty(), "Internal node must have at least one child");
+
         // Compute hash from interaction and children
         let mut hasher = FxHasher::default();
         interaction.hash(&mut hasher);
@@ -147,7 +149,7 @@ impl CigNode {
     pub fn depth(&self) -> usize {
         match &self.kind {
             CigNodeKind::Constant(_) | CigNodeKind::Leaf(_) => 0,
-            CigNodeKind::Internal { children, .. } => 1 + children.iter().map(|c| c.depth()).max().unwrap_or(0),
+            CigNodeKind::Internal { children, .. } => 1 + children.iter().map(|c| c.depth()).max().unwrap(),
         }
     }
 
@@ -177,7 +179,7 @@ impl CigNode {
         match &self.kind {
             CigNodeKind::Constant(_) | CigNodeKind::Leaf(_) => 0,
             CigNodeKind::Internal { interaction, children } => {
-                let child_max = children.iter().map(|c| c.interaction_width()).max().unwrap_or(0);
+                let child_max = children.iter().map(|c| c.interaction_width()).max().unwrap();
                 interaction.arity().max(child_max as u32) as usize
             }
         }
@@ -488,7 +490,7 @@ mod tests {
         let x1 = Arc::new(CigNode::leaf(Var(1)));
         let x2 = Arc::new(CigNode::leaf(Var(2)));
 
-        let and_i = InteractionFunction::from_operator(crate::Operator::And);
+        let and_i = InteractionFunction::from_binary(crate::Operator::And);
         let node = CigNode::internal(and_i, vec![x1, x2]);
 
         assert!(node.is_internal());
@@ -516,7 +518,7 @@ mod tests {
         let x1 = table.leaf(Var(1));
         let x2 = table.leaf(Var(2));
 
-        let and_i = InteractionFunction::from_operator(crate::Operator::And);
+        let and_i = InteractionFunction::from_binary(crate::Operator::And);
         let node1 = table.internal(and_i.clone(), vec![x1.clone(), x2.clone()]);
         let node2 = table.internal(and_i, vec![x1, x2]);
 

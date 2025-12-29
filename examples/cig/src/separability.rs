@@ -35,6 +35,15 @@ impl Operator {
         }
     }
 
+    /// Apply the operator to a list of Boolean values.
+    pub fn apply_all(self, inputs: &[bool]) -> bool {
+        match self {
+            Operator::And => inputs.iter().all(|&b| b),
+            Operator::Or => inputs.iter().any(|&b| b),
+            Operator::Xor => inputs.iter().fold(false, |acc, &b| acc ^ b),
+        }
+    }
+
     /// Get the symbol for this operator.
     pub fn symbol(self) -> &'static str {
         match self {

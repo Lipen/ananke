@@ -161,21 +161,21 @@ pub fn forall(cig: &Cig, var: Var, table: &mut UniqueTable) -> Cig {
 /// Apply OR to two CIGs.
 pub fn apply_or(a: &Cig, b: &Cig, table: &mut UniqueTable) -> Cig {
     // Simple implementation: create OR node
-    let interaction = InteractionFunction::from_operator(crate::Operator::Or);
+    let interaction = InteractionFunction::from_binary(crate::Operator::Or);
     let node = table.internal(interaction, vec![a.root().clone(), b.root().clone()]);
     Cig::new(node)
 }
 
 /// Apply AND to two CIGs.
 pub fn apply_and(a: &Cig, b: &Cig, table: &mut UniqueTable) -> Cig {
-    let interaction = InteractionFunction::from_operator(crate::Operator::And);
+    let interaction = InteractionFunction::from_binary(crate::Operator::And);
     let node = table.internal(interaction, vec![a.root().clone(), b.root().clone()]);
     Cig::new(node)
 }
 
 /// Apply XOR to two CIGs.
 pub fn apply_xor(a: &Cig, b: &Cig, table: &mut UniqueTable) -> Cig {
-    let interaction = InteractionFunction::from_operator(crate::Operator::Xor);
+    let interaction = InteractionFunction::from_binary(crate::Operator::Xor);
     let node = table.internal(interaction, vec![a.root().clone(), b.root().clone()]);
     Cig::new(node)
 }
