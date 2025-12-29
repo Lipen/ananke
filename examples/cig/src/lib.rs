@@ -57,7 +57,7 @@ pub use cig::{Cig, CigNode, CigNodeKind, UniqueTable};
 pub use interaction::{InteractionFunction, Operator};
 pub use partition::Partition;
 pub use truth_table::TruthTable;
-pub use variable::Var;
+pub use variable::{Var, VarSet};
 
 #[cfg(test)]
 mod tests;
