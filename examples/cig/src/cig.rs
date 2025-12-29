@@ -212,14 +212,15 @@ impl fmt::Debug for CigNode {
 
 impl fmt::Display for CigNode {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        self.display_tree(f, "", true)
+        self.display_tree(f, "", true, true)
     }
 }
 
 impl CigNode {
     /// Display the node as a tree structure.
-    fn display_tree(&self, f: &mut fmt::Formatter<'_>, prefix: &str, is_last: bool) -> fmt::Result {
-        let connector = if prefix.is_empty() {
+    fn display_tree(&self, f: &mut fmt::Formatter<'_>, prefix: &str, is_last: bool, is_root: bool) -> fmt::Result {
+        // Determine connector for this node
+        let connector = if is_root {
             ""
         } else if is_last {
             "└─ "
@@ -237,17 +238,16 @@ impl CigNode {
             CigNodeKind::Internal { interaction, children } => {
                 writeln!(f, "{}{}{}", prefix, connector, interaction)?;
 
-                let child_prefix = if prefix.is_empty() {
-                    "".to_string()
-                } else if is_last {
-                    format!("{}   ", prefix)
+                // Build prefix for children
+                let child_prefix = if is_root {
+                    String::new()
                 } else {
-                    format!("{}│  ", prefix)
+                    format!("{}{}", prefix, if is_last { "   " } else { "│  " })
                 };
 
                 for (i, child) in children.iter().enumerate() {
                     let is_last_child = i == children.len() - 1;
-                    child.display_tree(f, &child_prefix, is_last_child)?;
+                    child.display_tree(f, &child_prefix, is_last_child, false)?;
                 }
                 Ok(())
             }
