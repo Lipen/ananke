@@ -21,7 +21,7 @@ fn main() {
     let f_and = TruthTable::from_expr(2, |x| x[0] && x[1]);
     println!("Truth table: {}", f_and);
     let cig_and = builder.build(&f_and);
-    println!("{}", cig_and);
+    println!("{0:?}\n{0}", cig_and);
     let partition = cig_and.extract_partition();
     println!("Partition: {}", partition);
     println!("Nodes: {}, Depth: {}\n", cig_and.size(), cig_and.depth());
@@ -32,7 +32,7 @@ fn main() {
     let f_xor = TruthTable::from_expr(2, |x| x[0] ^ x[1]);
     println!("Truth table: {}", f_xor);
     let cig_xor = builder.build(&f_xor);
-    println!("{}", cig_xor);
+    println!("{0:?}\n{0}", cig_xor);
     let partition = cig_xor.extract_partition();
     println!("Partition: {}", partition);
     println!("Nodes: {}, Depth: {}\n", cig_xor.size(), cig_xor.depth());
@@ -44,7 +44,7 @@ fn main() {
     let f_parity = TruthTable::from_expr(3, |x| x.iter().fold(false, |acc, &b| acc ^ b));
     println!("Truth table: {}", f_parity);
     let cig_parity = builder.build(&f_parity);
-    println!("{}", cig_parity);
+    println!("{0:?}\n{0}", cig_parity);
     let partition = cig_parity.extract_partition();
     println!("Partition: {}", partition);
     println!("Nodes: {}, Depth: {}\n", cig_parity.size(), cig_parity.depth());
@@ -56,7 +56,7 @@ fn main() {
     let f_composed = TruthTable::from_expr(4, |x| (x[0] ^ x[1]) && (x[2] || x[3]));
     println!("Truth table: {}", f_composed);
     let cig_composed = builder.build(&f_composed);
-    println!("{}", cig_composed);
+    println!("{0:?}\n{0}", cig_composed);
     let partition = cig_composed.extract_partition();
     println!("Partition: {}", partition);
     println!("Nodes: {}, Depth: {}\n", cig_composed.size(), cig_composed.depth());
@@ -68,7 +68,7 @@ fn main() {
     let f_maj = TruthTable::from_expr(3, |x| (x[0] && x[1]) || (x[1] && x[2]) || (x[0] && x[2]));
     println!("Truth table: {}", f_maj);
     let cig_maj = builder.build(&f_maj);
-    println!("{}", cig_maj);
+    println!("{0:?}\n{0}", cig_maj);
     let partition = cig_maj.extract_partition();
     println!("Partition: {}", partition);
     println!("Nodes: {}, Depth: {}\n", cig_maj.size(), cig_maj.depth());
@@ -84,7 +84,7 @@ fn main() {
     let f_mux = TruthTable::from_expr(3, |x| (!x[0] && x[1]) || (x[0] && x[2]));
     println!("Truth table: {}", f_mux);
     let cig_mux = builder.build(&f_mux);
-    println!("{}", cig_mux);
+    println!("{0:?}\n{0}", cig_mux);
     let partition = cig_mux.extract_partition();
     println!("Partition: {}", partition);
     println!("Nodes: {}, Depth: {}\n", cig_mux.size(), cig_mux.depth());

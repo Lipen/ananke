@@ -350,7 +350,6 @@ impl fmt::Debug for Cig {
 
 impl fmt::Display for Cig {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        writeln!(f, "CIG:")?;
         write!(f, "{}", self.root)
     }
 }
