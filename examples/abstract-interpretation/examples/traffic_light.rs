@@ -20,7 +20,8 @@ use std::rc::Rc;
 use abstract_interpretation::*;
 
 fn main() {
-    println!("=== Traffic Light Controller Analysis ===\n");
+    println!("=== Traffic Light Controller Analysis ===");
+    println!();
 
     // System description
     println!("SYSTEM DESCRIPTION:");
@@ -82,6 +83,7 @@ fn example_path_insensitive() {
     println!("⚠️ IMPRECISION: Cannot determine which state the light is in!");
     println!("⚠️ Lost precision: timer could be 60 in YELLOW state (impossible!)");
     println!("⚠️ Cannot verify: \"YELLOW state has timer ≤ 5\"");
+    println!();
 }
 
 /// Example 2: Path-sensitive analysis
@@ -188,6 +190,7 @@ fn example_path_sensitive() {
     // Verify safety properties
     println!();
     println!("=== Safety Property Verification ===");
+    println!();
 
     // P1: Verify partition count
     assert_eq!(all_states.partition_count(), 3, "Should have 3 partitions (one per light state)");
@@ -209,6 +212,7 @@ fn example_path_sensitive() {
 
     println!();
     println!("=== Precision Comparison ===");
+    println!();
     println!("Path-Insensitive:");
     println!("  • Single merged state: timer ∈ [0, 60]");
     println!("  • Cannot verify YELLOW timer bound (timer ≤ 5)");
@@ -222,6 +226,7 @@ fn example_path_sensitive() {
 
     println!();
     println!("=== Key Insights ===");
+    println!();
     println!("• BDD encodes 3 states using 2 Boolean variables");
     println!("• Each state maintains its own numeric invariant (timer bound)");
     println!("• Control-sensitive product prevents false alarms");
