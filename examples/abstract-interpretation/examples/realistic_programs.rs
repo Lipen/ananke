@@ -41,11 +41,19 @@ fn example_array_bounds_checking() {
     let sign_domain = SignDomain;
     let interval_domain = IntervalDomain;
 
-    // Loop body: i in [0, 9]
+    // Loop invariant: i ∈ [0, 10] (true before, during, and after the loop)
+    // This property holds at all points in the program
+    println!("Loop invariant (true before, during, and after loop):");
+    let invariant_state = interval_domain.interval(&"i".to_string(), 0, 10);
+    if let Some((low, high)) = interval_domain.get_bounds(&invariant_state, &"i".to_string()) {
+        println!("  i ∈ [{}, {}]", low, high);
+    }
+
+    // Inside loop body: after i < 10 check passes
+    println!("\nInside loop body (after i < 10 condition passes):");
     let mut sign_state = sign_domain.interval(&"i".to_string(), 0, 9);
     let mut interval_state = interval_domain.interval(&"i".to_string(), 0, 9);
 
-    println!("Loop invariant (inside body):");
     if let Some((low, high)) = interval_domain.get_bounds(&interval_state, &"i".to_string()) {
         println!("  i ∈ [{}, {}]", low, high);
         println!("  Sign: {:?}", sign_state.get("i"));
@@ -58,18 +66,18 @@ fn example_array_bounds_checking() {
         println!("\n✓ Array access arr[i] is SAFE (i ∈ [{}, {}] < {})", low, high, array_size);
     }
 
-    // After loop exit: i = 10 (first value failing i < 10)
-    println!("\nAfter loop exit:");
+    // Post-loop state: i = 10 (first value failing i < 10 condition)
+    println!("\nPost-loop state (when i < 10 becomes false):");
     sign_state = sign_domain.constant(&"i".to_string(), 10);
     interval_state = interval_domain.constant(&"i".to_string(), 10);
 
-    if let Some((low, _)) = interval_domain.get_bounds(&interval_state, &"i".to_string()) {
-        println!("  i ∈ [{}, {}]", low, low);
+    if let Some((low, high)) = interval_domain.get_bounds(&interval_state, &"i".to_string()) {
+        println!("  i ∈ [{}, {}]", low, high);
         println!("  Sign: {:?}", sign_state.get("i"));
     }
 
     // Array access: arr[i] = 42 where i = 10
-    if let Some((low, _)) = interval_domain.get_bounds(&interval_state, &"i".to_string()) {
+    if let Some((low, high)) = interval_domain.get_bounds(&interval_state, &"i".to_string()) {
         assert!(low >= array_size);
         println!("\n✗ Array access arr[i] is UNSAFE (i={} >= array size={})", low, array_size);
     }
