@@ -48,16 +48,18 @@
 //!
 //! let domain = ConstantDomain;
 //! let mut elem = ConstantElement::new();
-//! elem.set("x".to_string(), ConstValue::Const(5));
-//! elem.set("y".to_string(), ConstValue::Const(3));
+//! elem.set("x", ConstValue::Const(5));
+//! elem.set("y", ConstValue::Const(3));
 //!
 //! // x + y evaluates to constant 8
 //! let sum = ConstValue::Const(5).add(ConstValue::Const(3));
 //! assert_eq!(sum, ConstValue::Const(8));
 //! ```
 
+use std::borrow::Borrow;
 use std::collections::HashMap;
 use std::fmt;
+use std::hash::Hash;
 
 use super::domain::AbstractDomain;
 use super::expr::{NumExpr, NumPred};
@@ -194,7 +196,11 @@ impl ConstantElement {
     }
 
     /// Get the constant value of a variable (returns Top if not defined).
-    pub fn get(&self, var: &str) -> ConstValue {
+    pub fn get<Q>(&self, var: &Q) -> ConstValue
+    where
+        String: Borrow<Q>,
+        Q: ?Sized + Hash + Eq,
+    {
         if self.is_bottom {
             return ConstValue::Bottom;
         }
@@ -202,11 +208,11 @@ impl ConstantElement {
     }
 
     /// Set the constant value of a variable.
-    pub fn set(&mut self, var: String, value: ConstValue) {
+    pub fn set(&mut self, var: impl Into<String>, value: ConstValue) {
         if value == ConstValue::Bottom {
             self.is_bottom = true;
         } else {
-            self.values.insert(var, value);
+            self.values.insert(var.into(), value);
         }
     }
 }
@@ -276,7 +282,7 @@ impl AbstractDomain for ConstantDomain {
             let v2 = elem2.get(var);
             let joined = Self::const_join(v1, v2);
             if joined != ConstValue::Top {
-                result.set(var.clone(), joined);
+                result.set(var, joined);
             }
         }
 
@@ -302,7 +308,7 @@ impl AbstractDomain for ConstantDomain {
                 return self.bottom();
             }
             if met != ConstValue::Top {
-                result.set(var.clone(), met);
+                result.set(var, met);
             }
         }
 
@@ -366,31 +372,32 @@ impl NumericDomain for ConstantDomain {
     type Var = String;
     type Value = i64;
 
-    fn constant(&self, var: &Self::Var, value: Self::Value) -> Self::Element {
+    fn constant(&self, var: impl Into<Self::Var>, value: Self::Value) -> Self::Element {
         let mut elem = ConstantElement::new();
-        elem.set(var.clone(), ConstValue::Const(value));
+        elem.set(var.into(), ConstValue::Const(value));
         elem
     }
 
-    fn interval(&self, var: &Self::Var, low: Self::Value, high: Self::Value) -> Self::Element {
+    fn interval(&self, var: impl Into<Self::Var>, low: Self::Value, high: Self::Value) -> Self::Element {
         let mut elem = ConstantElement::new();
+        let var_key = var.into();
         if low == high {
-            elem.set(var.clone(), ConstValue::Const(low));
+            elem.set(var_key, ConstValue::Const(low));
         } else {
             // Not a singleton interval → Top
-            elem.set(var.clone(), ConstValue::Top);
+            elem.set(var_key, ConstValue::Top);
         }
         elem
     }
 
-    fn assign(&self, elem: &Self::Element, var: &Self::Var, expr: &NumExpr<Self::Var, Self::Value>) -> Self::Element {
+    fn assign(&self, elem: &Self::Element, var: impl Into<Self::Var>, expr: &NumExpr<Self::Var, Self::Value>) -> Self::Element {
         if elem.is_bottom {
             return elem.clone();
         }
 
         let value = self.eval_expr(elem, expr);
         let mut result = elem.clone();
-        result.set(var.clone(), value);
+        result.set(var.into(), value);
         result
     }
 
@@ -407,7 +414,7 @@ impl NumericDomain for ConstantDomain {
                     ConstValue::Bottom => self.bottom(),
                     _ => {
                         let mut result = elem.clone();
-                        result.set(v.clone(), ConstValue::Const(*n));
+                        result.set(v, ConstValue::Const(*n));
                         result
                     }
                 }
@@ -454,7 +461,11 @@ impl NumericDomain for ConstantDomain {
         }
     }
 
-    fn project(&self, elem: &Self::Element, var: &Self::Var) -> Self::Element {
+    fn project<Q>(&self, elem: &Self::Element, var: &Q) -> Self::Element
+    where
+        Self::Var: Borrow<Q>,
+        Q: ?Sized + Hash + Eq,
+    {
         if elem.is_bottom {
             return elem.clone();
         }
@@ -463,7 +474,11 @@ impl NumericDomain for ConstantDomain {
         result
     }
 
-    fn get_constant(&self, elem: &Self::Element, var: &Self::Var) -> Option<Self::Value> {
+    fn get_constant<Q>(&self, elem: &Self::Element, var: &Q) -> Option<Self::Value>
+    where
+        Self::Var: Borrow<Q>,
+        Q: ?Sized + Hash + Eq,
+    {
         if elem.is_bottom {
             return None;
         }
@@ -473,7 +488,11 @@ impl NumericDomain for ConstantDomain {
         }
     }
 
-    fn get_bounds(&self, elem: &Self::Element, var: &Self::Var) -> Option<(Self::Value, Self::Value)> {
+    fn get_bounds<Q>(&self, elem: &Self::Element, var: &Q) -> Option<(Self::Value, Self::Value)>
+    where
+        Self::Var: Borrow<Q>,
+        Q: ?Sized + Hash + Eq,
+    {
         if elem.is_bottom {
             return None;
         }
@@ -534,22 +553,22 @@ mod tests {
         let domain = ConstantDomain;
 
         let mut elem = ConstantElement::new();
-        elem.set("x".to_string(), ConstValue::Const(5));
-        elem.set("y".to_string(), ConstValue::Const(3));
+        elem.set("x", ConstValue::Const(5));
+        elem.set("y", ConstValue::Const(3));
 
         // z = x + y = 8
-        let expr = NumExpr::Add(Box::new(NumExpr::Var("x".to_string())), Box::new(NumExpr::Var("y".to_string())));
-        elem = domain.assign(&elem, &"z".to_string(), &expr);
+        let expr = NumExpr::var("x").add(NumExpr::var("y"));
+        elem = domain.assign(&elem, "z", &expr);
         assert_eq!(elem.get("z"), ConstValue::Const(8));
 
         // w = z * 2 = 16
-        let expr = NumExpr::Mul(Box::new(NumExpr::Var("z".to_string())), Box::new(NumExpr::Const(2)));
-        elem = domain.assign(&elem, &"w".to_string(), &expr);
+        let expr = NumExpr::var("z").mul(NumExpr::constant(2));
+        elem = domain.assign(&elem, "w", &expr);
         assert_eq!(elem.get("w"), ConstValue::Const(16));
 
         // result = w - 4 = 12
-        let expr = NumExpr::Sub(Box::new(NumExpr::Var("w".to_string())), Box::new(NumExpr::Const(4)));
-        elem = domain.assign(&elem, &"result".to_string(), &expr);
+        let expr = NumExpr::var("w").sub(NumExpr::constant(4));
+        elem = domain.assign(&elem, "result", &expr);
         assert_eq!(elem.get("result"), ConstValue::Const(12));
     }
 
@@ -559,7 +578,7 @@ mod tests {
         let domain = ConstantDomain;
 
         let mut elem = ConstantElement::new();
-        elem.set("x".to_string(), ConstValue::Const(5));
+        elem.set("x", ConstValue::Const(5));
 
         // Check if x > 10 is possible
         let pred = NumExpr::var("x").gt(NumExpr::constant(10));
@@ -575,7 +594,7 @@ mod tests {
         let domain = ConstantDomain;
 
         let mut elem = ConstantElement::new();
-        elem.set("DEBUG".to_string(), ConstValue::Const(0));
+        elem.set("DEBUG", ConstValue::Const(0));
 
         // if (DEBUG) is always false
         let pred = NumExpr::var("DEBUG").eq(NumExpr::constant(0));
@@ -602,21 +621,21 @@ mod tests {
         // Sample elements for testing
         let samples = vec![
             domain.bottom(),
-            domain.constant(&"x".to_string(), -10),
-            domain.constant(&"x".to_string(), 0),
-            domain.constant(&"x".to_string(), 5),
-            domain.constant(&"x".to_string(), 100),
+            domain.constant("x", -10),
+            domain.constant("x", 0),
+            domain.constant("x", 5),
+            domain.constant("x", 100),
             domain.top(),
             {
                 let mut elem = ConstantElement::new();
-                elem.set("x".to_string(), ConstValue::Top);
+                elem.set("x", ConstValue::Top);
                 elem
             },
             // Multi-variable elements
             {
                 let mut elem = ConstantElement::new();
-                elem.set("x".to_string(), ConstValue::Const(5));
-                elem.set("y".to_string(), ConstValue::Const(10));
+                elem.set("x", ConstValue::Const(5));
+                elem.set("y", ConstValue::Const(10));
                 elem
             },
         ];
@@ -626,12 +645,14 @@ mod tests {
 
     #[test]
     fn test_const_value_addition() {
-        assert_eq!(ConstValue::Const(5).add(ConstValue::Const(3)), ConstValue::Const(8));
-        assert_eq!(ConstValue::Const(5).add(ConstValue::Top), ConstValue::Top);
-        assert_eq!(ConstValue::Bottom.add(ConstValue::Const(5)), ConstValue::Bottom);
+        use ConstValue::*;
+
+        assert_eq!(Const(5).add(Const(3)), Const(8));
+        assert_eq!(Const(5).add(Top), Top);
+        assert_eq!(Bottom.add(Const(5)), Bottom);
 
         // Overflow
-        assert_eq!(ConstValue::Const(i64::MAX).add(ConstValue::Const(1)), ConstValue::Top);
+        assert_eq!(Const(i64::MAX).add(Const(1)), Top);
     }
 
     #[test]
@@ -651,82 +672,79 @@ mod tests {
 
     #[test]
     fn test_const_assign() {
-        use NumExpr::*;
         let domain = ConstantDomain;
 
         let mut elem = ConstantElement::new();
-        elem.set("x".to_string(), ConstValue::Const(5));
-        elem.set("y".to_string(), ConstValue::Const(3));
+        elem.set("x", ConstValue::Const(5));
+        elem.set("y", ConstValue::Const(3));
 
         // z := x + y
-        let expr = Add(Box::new(Var("x".to_string())), Box::new(Var("y".to_string())));
-        let result = domain.assign(&elem, &"z".to_string(), &expr);
+        // let expr = Add(Box::new(Var("x")), Box::new(Var("y")));
+        let expr = NumExpr::var("x").add(NumExpr::var("y"));
+        let result = domain.assign(&elem, "z", &expr);
         assert_eq!(result.get("z"), ConstValue::Const(8));
 
         // z := x * y
-        let expr = Mul(Box::new(Var("x".to_string())), Box::new(Var("y".to_string())));
-        let result = domain.assign(&elem, &"z".to_string(), &expr);
+        let expr = NumExpr::var("x").mul(NumExpr::var("y"));
+        let result = domain.assign(&elem, "z", &expr);
         assert_eq!(result.get("z"), ConstValue::Const(15));
     }
 
     #[test]
     fn test_const_assign_with_top() {
-        use NumExpr::*;
         let domain = ConstantDomain;
 
         let mut elem = ConstantElement::new();
-        elem.set("x".to_string(), ConstValue::Const(5));
-        elem.set("y".to_string(), ConstValue::Top);
+        elem.set("x", ConstValue::Const(5));
+        elem.set("y", ConstValue::Top);
 
         // z := x + y (Top propagates)
-        let expr = Add(Box::new(Var("x".to_string())), Box::new(Var("y".to_string())));
-        let result = domain.assign(&elem, &"z".to_string(), &expr);
+        let expr = NumExpr::var("x").add(NumExpr::var("y"));
+        let result = domain.assign(&elem, "z", &expr);
         assert_eq!(result.get("z"), ConstValue::Top);
     }
 
     #[test]
     fn test_const_assume_eq() {
-        use NumExpr::*;
-        use NumPred::*;
         let domain = ConstantDomain;
 
         let mut elem = ConstantElement::new();
-        elem.set("x".to_string(), ConstValue::Top);
+        elem.set("x", ConstValue::Top);
 
         // Assume x = 5
-        let result = domain.assume(&elem, &Eq(Var("x".to_string()), Const(5)));
+        let pred_eq = NumExpr::var("x").eq(NumExpr::constant(5));
+        let result = domain.assume(&elem, &pred_eq);
         assert_eq!(result.get("x"), ConstValue::Const(5));
     }
 
     #[test]
     fn test_const_assume_contradiction() {
-        use NumExpr::*;
-        use NumPred::*;
         let domain = ConstantDomain;
 
         let mut elem = ConstantElement::new();
-        elem.set("x".to_string(), ConstValue::Const(5));
+        elem.set("x", ConstValue::Const(5));
 
         // Assume x = 10 (contradiction!)
-        let result = domain.assume(&elem, &Eq(Var("x".to_string()), Const(10)));
+        let pred_eq = NumExpr::var("x").eq(NumExpr::constant(10));
+        let result = domain.assume(&elem, &pred_eq);
         assert!(domain.is_bottom(&result));
     }
 
     #[test]
     fn test_const_assume_neq() {
-        use NumExpr::*;
-        use NumPred::*;
         let domain = ConstantDomain;
 
         let mut elem = ConstantElement::new();
-        elem.set("x".to_string(), ConstValue::Const(5));
+        elem.set("x", ConstValue::Const(5));
 
         // Assume x ≠ 5 (contradiction!)
-        let result = domain.assume(&elem, &Neq(Var("x".to_string()), Const(5)));
+        let pred_neq = NumExpr::var("x").neq(NumExpr::constant(5));
+        let result = domain.assume(&elem, &pred_neq);
         assert!(domain.is_bottom(&result));
 
         // Assume x ≠ 10 (consistent)
-        let result = domain.assume(&elem, &Neq(Var("x".to_string()), Const(10)));
+        let pred_neq = NumExpr::var("x").neq(NumExpr::constant(10));
+        let result = domain.assume(&elem, &pred_neq);
         assert_eq!(result.get("x"), ConstValue::Const(5));
     }
 
@@ -734,24 +752,24 @@ mod tests {
     fn test_const_get_constant() {
         let domain = ConstantDomain;
 
-        let elem = domain.constant(&"x".to_string(), 42);
-        assert_eq!(domain.get_constant(&elem, &"x".to_string()), Some(42));
+        let elem = domain.constant("x", 42);
+        assert_eq!(domain.get_constant(&elem, "x"), Some(42));
 
         let mut elem = ConstantElement::new();
-        elem.set("x".to_string(), ConstValue::Top);
-        assert_eq!(domain.get_constant(&elem, &"x".to_string()), None);
+        elem.set("x", ConstValue::Top);
+        assert_eq!(domain.get_constant(&elem, "x"), None);
     }
 
     #[test]
     fn test_const_get_bounds() {
         let domain = ConstantDomain;
 
-        let elem = domain.constant(&"x".to_string(), 42);
-        assert_eq!(domain.get_bounds(&elem, &"x".to_string()), Some((42, 42)));
+        let elem = domain.constant("x", 42);
+        assert_eq!(domain.get_bounds(&elem, "x"), Some((42, 42)));
 
         let mut elem = ConstantElement::new();
-        elem.set("x".to_string(), ConstValue::Top);
-        assert_eq!(domain.get_bounds(&elem, &"x".to_string()), Some((i64::MIN, i64::MAX)));
+        elem.set("x", ConstValue::Top);
+        assert_eq!(domain.get_bounds(&elem, "x"), Some((i64::MIN, i64::MAX)));
     }
 
     #[test]
@@ -759,11 +777,11 @@ mod tests {
         let domain = ConstantDomain;
 
         // Singleton interval
-        let elem = domain.interval(&"x".to_string(), 5, 5);
+        let elem = domain.interval("x", 5, 5);
         assert_eq!(elem.get("x"), ConstValue::Const(5));
 
         // Non-singleton interval
-        let elem = domain.interval(&"x".to_string(), 1, 10);
+        let elem = domain.interval("x", 1, 10);
         assert_eq!(elem.get("x"), ConstValue::Top);
     }
 
@@ -772,10 +790,10 @@ mod tests {
         let domain = ConstantDomain;
 
         let mut elem = ConstantElement::new();
-        elem.set("x".to_string(), ConstValue::Const(5));
-        elem.set("y".to_string(), ConstValue::Const(10));
+        elem.set("x", ConstValue::Const(5));
+        elem.set("y", ConstValue::Const(10));
 
-        let result = domain.project(&elem, &"x".to_string());
+        let result = domain.project(&elem, "x");
         assert_eq!(result.get("x"), ConstValue::Top); // x removed
         assert_eq!(result.get("y"), ConstValue::Const(10)); // y unchanged
     }
@@ -784,8 +802,8 @@ mod tests {
     fn test_const_widen_narrow() {
         let domain = ConstantDomain;
 
-        let elem1 = domain.constant(&"x".to_string(), 5);
-        let elem2 = domain.constant(&"x".to_string(), 5);
+        let elem1 = domain.constant("x", 5);
+        let elem2 = domain.constant("x", 5);
 
         // For flat lattice, widen = join
         let widened = domain.widen(&elem1, &elem2);
@@ -798,23 +816,19 @@ mod tests {
 
     #[test]
     fn test_const_complex_expression() {
-        use NumExpr::*;
         let domain = ConstantDomain;
 
         let mut elem = ConstantElement::new();
-        elem.set("x".to_string(), ConstValue::Const(10));
-        elem.set("y".to_string(), ConstValue::Const(3));
+        elem.set("x", ConstValue::Const(10));
+        elem.set("y", ConstValue::Const(3));
 
         // z = (x + y) * 2 - 5
-        let expr = Sub(
-            Box::new(Mul(
-                Box::new(Add(Box::new(Var("x".to_string())), Box::new(Var("y".to_string())))),
-                Box::new(Const(2)),
-            )),
-            Box::new(Const(5)),
-        );
+        let expr = NumExpr::var("x")
+            .add(NumExpr::var("y"))
+            .mul(NumExpr::constant(2))
+            .sub(NumExpr::constant(5));
 
-        let result = domain.assign(&elem, &"z".to_string(), &expr);
+        let result = domain.assign(&elem, "z", &expr);
         // (10 + 3) * 2 - 5 = 13 * 2 - 5 = 26 - 5 = 21
         assert_eq!(result.get("z"), ConstValue::Const(21));
     }

@@ -34,7 +34,7 @@ where
         match stmt {
             Stmt::Skip => elem.clone(),
 
-            Stmt::Assign(var, expr) => domain.assign(elem, var, expr),
+            Stmt::Assign(var, expr) => domain.assign(elem, var.clone(), expr),
 
             Stmt::Seq(s1, s2) => {
                 let e1 = self.apply(domain, elem, s1);

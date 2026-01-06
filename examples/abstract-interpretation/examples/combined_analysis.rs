@@ -39,19 +39,19 @@ fn example_sign_constant_cooperation() {
     println!();
 
     // Sign analysis
-    let sign_elem = sign_domain.constant(&"x".to_string(), 0);
+    let sign_elem = sign_domain.constant("x", 0);
     println!("Sign domain: x = {}", sign_elem.get("x"));
 
     let expr = NumExpr::Add(Box::new(NumExpr::Var("x".to_string())), Box::new(NumExpr::Const(5)));
-    let sign_result = sign_domain.assign(&sign_elem, &"y".to_string(), &expr);
+    let sign_result = sign_domain.assign(&sign_elem, "y", &expr);
     println!("Sign domain: y = {} (0 + positive = positive)", sign_result.get("y"));
     assert_eq!(sign_result.get("y"), Sign::Pos);
 
     // Constant analysis
-    let const_elem = const_domain.constant(&"x".to_string(), 0);
+    let const_elem = const_domain.constant("x", 0);
     println!("\nConstant domain: x = {}", const_elem.get("x"));
 
-    let const_result = const_domain.assign(&const_elem, &"y".to_string(), &expr);
+    let const_result = const_domain.assign(&const_elem, "y", &expr);
     println!("Constant domain: y = {} (exact value!)", const_result.get("y"));
     assert_eq!(const_result.get("y"), ConstValue::Const(5));
 
@@ -78,7 +78,7 @@ fn example_sign_interval_cooperation() {
     println!();
 
     // Initial interval
-    let mut interval_elem = interval_domain.interval(&"x".to_string(), -10, 10);
+    let mut interval_elem = interval_domain.interval("x", -10, 10);
     println!("Interval domain: x ∈ {}", interval_elem.get("x"));
 
     // Initial sign
@@ -101,8 +101,8 @@ fn example_sign_interval_cooperation() {
     // y = x * x
     let expr = NumExpr::Mul(Box::new(NumExpr::Var("x".to_string())), Box::new(NumExpr::Var("x".to_string())));
 
-    interval_elem = interval_domain.assign(&interval_elem, &"y".to_string(), &expr);
-    sign_elem = sign_domain.assign(&sign_elem, &"y".to_string(), &expr);
+    interval_elem = interval_domain.assign(&interval_elem, "y", &expr);
+    sign_elem = sign_domain.assign(&sign_elem, "y", &expr);
 
     println!("\nAfter 'y = x * x':");
     println!("  Interval: y ∈ {} (precise bounds)", interval_elem.get("y"));
@@ -132,7 +132,7 @@ fn example_constant_interval_cooperation() {
     println!();
 
     // Constant domain
-    let mut const_elem = const_domain.constant(&"x".to_string(), 5);
+    let mut const_elem = const_domain.constant("x", 5);
     const_elem.set("y".to_string(), ConstValue::Top); // Unknown
 
     println!("Constant domain:");
@@ -140,11 +140,11 @@ fn example_constant_interval_cooperation() {
     println!("  y = {}", const_elem.get("y"));
 
     let expr = NumExpr::Add(Box::new(NumExpr::Var("x".to_string())), Box::new(NumExpr::Var("y".to_string())));
-    const_elem = const_domain.assign(&const_elem, &"z".to_string(), &expr);
+    const_elem = const_domain.assign(&const_elem, "z", &expr);
     println!("  z = x + y = {} (lost precision)", const_elem.get("z"));
 
     // Interval domain
-    let mut interval_elem = interval_domain.interval(&"x".to_string(), 5, 5);
+    let mut interval_elem = interval_domain.interval("x", 5, 5);
     interval_elem.set("y".to_string(), Interval::new(Bound::Finite(1), Bound::Finite(10)));
 
     println!("\nInterval domain:");
@@ -180,9 +180,9 @@ fn example_triple_domain_analysis() {
     println!();
 
     // Create initial elements with x = 5
-    let mut sign_elem = sign_domain.constant(&"x".to_string(), 5);
-    let mut const_elem = const_domain.constant(&"x".to_string(), 5);
-    let mut interval_elem = interval_domain.interval(&"x".to_string(), 5, 5);
+    let mut sign_elem = sign_domain.constant("x", 5);
+    let mut const_elem = const_domain.constant("x", 5);
+    let mut interval_elem = interval_domain.interval("x", 5, 5);
 
     println!("Initial state: x = 5");
     println!("  Sign: {}", sign_elem.get("x"));
@@ -192,9 +192,9 @@ fn example_triple_domain_analysis() {
     // y = x * 2
     let expr = NumExpr::Mul(Box::new(NumExpr::Var("x".to_string())), Box::new(NumExpr::Const(2)));
 
-    sign_elem = sign_domain.assign(&sign_elem, &"y".to_string(), &expr);
-    const_elem = const_domain.assign(&const_elem, &"y".to_string(), &expr);
-    interval_elem = interval_domain.assign(&interval_elem, &"y".to_string(), &expr);
+    sign_elem = sign_domain.assign(&sign_elem, "y", &expr);
+    const_elem = const_domain.assign(&const_elem, "y", &expr);
+    interval_elem = interval_domain.assign(&interval_elem, "y", &expr);
 
     println!("\nAfter 'y = x * 2':");
     println!("  Sign: {}", sign_elem.get("y"));
@@ -216,9 +216,9 @@ fn example_triple_domain_analysis() {
     // z = y - 3
     let expr = NumExpr::Sub(Box::new(NumExpr::Var("y".to_string())), Box::new(NumExpr::Const(3)));
 
-    sign_elem = sign_domain.assign(&sign_elem, &"z".to_string(), &expr);
-    const_elem = const_domain.assign(&const_elem, &"z".to_string(), &expr);
-    interval_elem = interval_domain.assign(&interval_elem, &"z".to_string(), &expr);
+    sign_elem = sign_domain.assign(&sign_elem, "z", &expr);
+    const_elem = const_domain.assign(&const_elem, "z", &expr);
+    interval_elem = interval_domain.assign(&interval_elem, "z", &expr);
 
     println!("\nAfter 'z = y - 3':");
     println!(

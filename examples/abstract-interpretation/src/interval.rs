@@ -13,9 +13,11 @@
 //! - **Bottom** (`⊥`): Empty interval (e.g., `[1, 0]`)
 //! - **Top** (`⊤`): `[-∞, +∞]`
 
+use std::borrow::Borrow;
 use std::cmp::{max, min};
 use std::collections::HashMap;
 use std::fmt;
+use std::hash::Hash;
 
 use super::domain::AbstractDomain;
 use super::expr::{NumExpr, NumPred};
@@ -206,7 +208,11 @@ impl IntervalElement {
         Self::new()
     }
 
-    pub fn get(&self, var: &str) -> Interval {
+    pub fn get<Q>(&self, var: &Q) -> Interval
+    where
+        String: Borrow<Q>,
+        Q: ?Sized + Hash + Eq,
+    {
         if self.is_bottom {
             return Interval::bottom();
         }
@@ -336,26 +342,26 @@ impl NumericDomain for IntervalDomain {
     type Var = String;
     type Value = i64;
 
-    fn constant(&self, var: &Self::Var, value: Self::Value) -> Self::Element {
+    fn constant(&self, var: impl Into<Self::Var>, value: Self::Value) -> Self::Element {
         let mut elem = IntervalElement::new();
-        elem.set(var.clone(), Interval::constant(value));
+        elem.set(var.into(), Interval::constant(value));
         elem
     }
 
-    fn interval(&self, var: &Self::Var, low: Self::Value, high: Self::Value) -> Self::Element {
+    fn interval(&self, var: impl Into<Self::Var>, low: Self::Value, high: Self::Value) -> Self::Element {
         let mut elem = IntervalElement::new();
-        elem.set(var.clone(), Interval::new(Bound::Finite(low), Bound::Finite(high)));
+        elem.set(var.into(), Interval::new(Bound::Finite(low), Bound::Finite(high)));
         elem
     }
 
-    fn assign(&self, elem: &Self::Element, var: &Self::Var, expr: &NumExpr<Self::Var, Self::Value>) -> Self::Element {
+    fn assign(&self, elem: &Self::Element, var: impl Into<Self::Var>, expr: &NumExpr<Self::Var, Self::Value>) -> Self::Element {
         if elem.is_bottom {
             return elem.clone();
         }
 
         let mut result = elem.clone();
         let interval = self.eval_expr(elem, expr);
-        result.set(var.clone(), interval);
+        result.set(var.into(), interval);
         result
     }
 
@@ -434,13 +440,21 @@ impl NumericDomain for IntervalDomain {
         }
     }
 
-    fn project(&self, elem: &Self::Element, var: &Self::Var) -> Self::Element {
+    fn project<Q>(&self, elem: &Self::Element, var: &Q) -> Self::Element
+    where
+        Self::Var: Borrow<Q>,
+        Q: ?Sized + Hash + Eq,
+    {
         let mut result = elem.clone();
         result.intervals.remove(var);
         result
     }
 
-    fn get_constant(&self, elem: &Self::Element, var: &Self::Var) -> Option<Self::Value> {
+    fn get_constant<Q>(&self, elem: &Self::Element, var: &Q) -> Option<Self::Value>
+    where
+        Self::Var: Borrow<Q>,
+        Q: ?Sized + Hash + Eq,
+    {
         let interval = elem.get(var);
         match (interval.low, interval.high) {
             (Bound::Finite(l), Bound::Finite(h)) if l == h => Some(l),
@@ -448,7 +462,11 @@ impl NumericDomain for IntervalDomain {
         }
     }
 
-    fn get_bounds(&self, elem: &Self::Element, var: &Self::Var) -> Option<(Self::Value, Self::Value)> {
+    fn get_bounds<Q>(&self, elem: &Self::Element, var: &Q) -> Option<(Self::Value, Self::Value)>
+    where
+        Self::Var: Borrow<Q>,
+        Q: ?Sized + Hash + Eq,
+    {
         let interval = elem.get(var);
         match (interval.low, interval.high) {
             (Bound::Finite(l), Bound::Finite(h)) => Some((l, h)),

@@ -28,7 +28,9 @@
 //!       ⊥
 //! ```
 
+use std::borrow::Borrow;
 use std::fmt;
+use std::hash::Hash;
 
 use super::domain::AbstractDomain;
 use super::expr::{NumExpr, NumPred};
@@ -127,7 +129,11 @@ impl SignElement {
     }
 
     /// Get the sign of a variable (returns Top if not defined).
-    pub fn get(&self, var: &str) -> Sign {
+    pub fn get<Q>(&self, var: &Q) -> Sign
+    where
+        String: Borrow<Q>,
+        Q: ?Sized + Hash + Eq,
+    {
         if self.is_bottom {
             return Sign::Bottom;
         }
@@ -135,11 +141,11 @@ impl SignElement {
     }
 
     /// Set the sign of a variable.
-    pub fn set(&mut self, var: String, sign: Sign) {
+    pub fn set(&mut self, var: impl Into<String>, sign: Sign) {
         if sign == Sign::Bottom {
             self.is_bottom = true;
         } else {
-            self.signs.insert(var, sign);
+            self.signs.insert(var.into(), sign);
         }
     }
 }
@@ -343,13 +349,13 @@ impl NumericDomain for SignDomain {
     type Var = String;
     type Value = i64;
 
-    fn constant(&self, var: &Self::Var, value: Self::Value) -> Self::Element {
+    fn constant(&self, var: impl Into<Self::Var>, value: Self::Value) -> Self::Element {
         let mut elem = SignElement::new();
-        elem.set(var.clone(), Sign::from_value(value));
+        elem.set(var.into(), Sign::from_value(value));
         elem
     }
 
-    fn interval(&self, var: &Self::Var, low: Self::Value, high: Self::Value) -> Self::Element {
+    fn interval(&self, var: impl Into<Self::Var>, low: Self::Value, high: Self::Value) -> Self::Element {
         let mut elem = SignElement::new();
         let sign = if low > high {
             Sign::Bottom
@@ -367,18 +373,18 @@ impl NumericDomain for SignDomain {
             // low < 0 && high > 0
             Sign::Top
         };
-        elem.set(var.clone(), sign);
+        elem.set(var.into(), sign);
         elem
     }
 
-    fn assign(&self, elem: &Self::Element, var: &Self::Var, expr: &NumExpr<Self::Var, Self::Value>) -> Self::Element {
+    fn assign(&self, elem: &Self::Element, var: impl Into<Self::Var>, expr: &NumExpr<Self::Var, Self::Value>) -> Self::Element {
         if elem.is_bottom {
             return elem.clone();
         }
 
         let value_sign = self.eval_expr(elem, expr);
         let mut result = elem.clone();
-        result.set(var.clone(), value_sign);
+        result.set(var.into(), value_sign);
         result
     }
 
@@ -476,7 +482,11 @@ impl NumericDomain for SignDomain {
         }
     }
 
-    fn project(&self, elem: &Self::Element, var: &Self::Var) -> Self::Element {
+    fn project<Q>(&self, elem: &Self::Element, var: &Q) -> Self::Element
+    where
+        Self::Var: Borrow<Q>,
+        Q: ?Sized + Hash + Eq,
+    {
         if elem.is_bottom {
             return elem.clone();
         }
@@ -485,7 +495,11 @@ impl NumericDomain for SignDomain {
         result
     }
 
-    fn get_constant(&self, elem: &Self::Element, var: &Self::Var) -> Option<Self::Value> {
+    fn get_constant<Q>(&self, elem: &Self::Element, var: &Q) -> Option<Self::Value>
+    where
+        Self::Var: Borrow<Q>,
+        Q: ?Sized + Hash + Eq,
+    {
         if elem.is_bottom {
             return None;
         }
@@ -497,7 +511,11 @@ impl NumericDomain for SignDomain {
         }
     }
 
-    fn get_bounds(&self, elem: &Self::Element, var: &Self::Var) -> Option<(Self::Value, Self::Value)> {
+    fn get_bounds<Q>(&self, elem: &Self::Element, var: &Q) -> Option<(Self::Value, Self::Value)>
+    where
+        Self::Var: Borrow<Q>,
+        Q: ?Sized + Hash + Eq,
+    {
         if elem.is_bottom {
             return None;
         }
@@ -844,24 +862,24 @@ mod tests {
         // Sample elements for testing
         let samples = vec![
             domain.bottom(),
-            domain.constant(&"x".to_string(), -5),
-            domain.constant(&"x".to_string(), 0),
-            domain.constant(&"x".to_string(), 5),
+            domain.constant("x", -5),
+            domain.constant("x", 0),
+            domain.constant("x", 5),
             domain.top(),
             // Non-singleton signs
             {
                 let mut elem = SignElement::new();
-                elem.set("x".to_string(), Sign::NonPos);
+                elem.set("x", Sign::NonPos);
                 elem
             },
             {
                 let mut elem = SignElement::new();
-                elem.set("x".to_string(), Sign::NonNeg);
+                elem.set("x", Sign::NonNeg);
                 elem
             },
             {
                 let mut elem = SignElement::new();
-                elem.set("x".to_string(), Sign::NonZero);
+                elem.set("x", Sign::NonZero);
                 elem
             },
         ];

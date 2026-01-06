@@ -1806,7 +1806,7 @@ impl<N: NumericDomain> ControlSensitiveProduct<N> {
         let mut new_partitions = HashMap::new();
 
         for (hcs, numeric_elem) in &elem.partitions {
-            let new_numeric = self.numeric_domain.assign(numeric_elem, var, expr);
+            let new_numeric = self.numeric_domain.assign(numeric_elem, var.clone(), expr);
 
             // Only keep feasible partitions
             if !self.numeric_domain.is_bottom(&new_numeric) {

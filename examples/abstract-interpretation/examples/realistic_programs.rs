@@ -46,7 +46,7 @@ fn example_array_bounds_checking() {
 
     // i = 0
     println!("After i = 0:");
-    let state = interval_domain.constant(&"i".to_string(), 0);
+    let state = interval_domain.constant("i", 0);
     if let Some((low, high)) = interval_domain.get_bounds(&state, &"i".to_string()) {
         println!("  i ∈ [{}, {}]", low, high);
         assert_eq!(low, 0, "i initialized to 0");
@@ -61,7 +61,7 @@ fn example_array_bounds_checking() {
 
     // Simulate one iteration: i = i + 1 starting from i=0
     println!("  After 1st iteration: i = 0 + 1 = 1");
-    let mut loop_state = interval_domain.constant(&"i".to_string(), 0);
+    let mut loop_state = interval_domain.constant("i", 0);
     let increment = NumExpr::var("i").add(NumExpr::constant(1));
     loop_state = interval_domain.assign(&loop_state, &"i".to_string(), &increment);
     println!("  Engine computed: i ∈ {}", loop_state.get("i"));
@@ -72,7 +72,7 @@ fn example_array_bounds_checking() {
 
     // Loop invariant: i ∈ [0, 10] (over-approximation valid for all iterations)
     println!("\n  Invariant: i ∈ [0, 10] (before/during/after loop)");
-    let invariant = interval_domain.interval(&"i".to_string(), 0, 10);
+    let invariant = interval_domain.interval("i", 0, 10);
 
     // Refine invariant using loop condition i < 10 (inside loop body)
     println!("\nInside loop body (after condition i < 10 passes):");
@@ -208,13 +208,13 @@ fn example_combined_analysis() {
 
     // Initial state: n = 10, sum = 0
     println!("Initial state:");
-    let mut const_state = const_domain.constant(&"n".to_string(), 10);
+    let mut const_state = const_domain.constant("n", 10);
     const_state.set("sum".to_string(), ConstValue::Const(0));
 
-    let mut interval_state = interval_domain.constant(&"sum".to_string(), 0);
+    let mut interval_state = interval_domain.constant("sum", 0);
     interval_state.set("n".to_string(), Interval::constant(10));
 
-    let sign_state = sign_domain.constant(&"n".to_string(), 10);
+    let sign_state = sign_domain.constant("n", 10);
 
     println!("  Const:    n={:?}, sum={:?}", const_state.get("n"), const_state.get("sum"));
     println!("  Interval: n ∈ {}, sum ∈ {}", interval_state.get("n"), interval_state.get("sum"));
@@ -222,7 +222,7 @@ fn example_combined_analysis() {
 
     // Loop condition: i < 10, so i ∈ [0, 9]
     println!("\nLoop body (i ranges from 0 to 9):");
-    let loop_i_state = interval_domain.interval(&"i".to_string(), 0, 9);
+    let loop_i_state = interval_domain.interval("i", 0, 9);
     if let Some((low, high)) = interval_domain.get_bounds(&loop_i_state, &"i".to_string()) {
         println!("  i ∈ [{}, {}]", low, high);
         assert_eq!(low, 0, "Loop variable starts at 0");
@@ -238,7 +238,7 @@ fn example_combined_analysis() {
     println!("  Iter 9: sum = 36 + 9 = 45");
 
     // Engine computation: simulate loop iterations
-    let mut loop_sum = interval_domain.constant(&"sum".to_string(), 0);
+    let mut loop_sum = interval_domain.constant("sum", 0);
     for i in 0..10 {
         let sum_expr = NumExpr::var("sum").add(NumExpr::constant(i));
         loop_sum = interval_domain.assign(&loop_sum, &"sum".to_string(), &sum_expr);
@@ -279,9 +279,9 @@ fn example_reduced_product() {
     let interval_domain = IntervalDomain;
 
     // Initial: x in [-10, 10]
-    let mut sign_state = sign_domain.interval(&"x".to_string(), -10, 10);
-    let mut const_state = const_domain.interval(&"x".to_string(), -10, 10);
-    let mut interval_state = interval_domain.interval(&"x".to_string(), -10, 10);
+    let mut sign_state = sign_domain.interval("x", -10, 10);
+    let mut const_state = const_domain.interval("x", -10, 10);
+    let mut interval_state = interval_domain.interval("x", -10, 10);
 
     println!("Initial:");
     println!("  Sign: x = {:?}", sign_state.get("x"));
