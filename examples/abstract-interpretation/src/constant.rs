@@ -1,46 +1,18 @@
-//! Constant propagation abstract domain implementation.
+//! Constant propagation abstract domain.
 //!
-//! The constant domain tracks exact constant values when known, representing
-//! unknowns as Top. It's one of the simplest and most effective abstract domains
-//! for optimization and dead code detection.
+//! The lattice is *flat*:
+//! - elements are `⊥`, `Const(n)`, and `⊤`,
+//! - `Const(n)` values are pairwise incomparable,
+//! - order is `⊥ ⊑ Const(n) ⊑ ⊤`.
 //!
-//! # Elements
+//! Joins and meets follow the usual flat-lattice rules:
+//! - `Const(n) ⊔ Const(m) = ⊤` for `n != m`,
+//! - `Const(n) ⊓ Const(m) = ⊥` for `n != m`.
 //!
-//! The lattice has three kinds of elements:
-//! - **Bottom** (`⊥`): impossible/unreachable
-//! - **Const(n)**: exactly the constant value `n`
-//! - **Top** (`⊤`): unknown/non-constant
+//! Arithmetic folds constants when both operands are known.
+//! On overflow or undefined operations (e.g. division by zero), the result is `⊤`.
 //!
-//! # Lattice Structure
-//!
-//! The domain forms a flat lattice:
-//!
-//! ```text
-//!           ⊤ (Top - Unknown)
-//!          / | \
-//!    ... Const(n) ... (All possible constant values)
-//!          \ | /
-//!           ⊥ (Bottom)
-//! ```
-//!
-//! - **Order** (`⊑`):
-//!   - `⊥ ⊑ x` for all `x`
-//!   - `x ⊑ ⊤` for all `x`
-//!   - `Const(n) ⊑ Const(m)` iff `n = m`
-//! - **Join** (`⊔`):
-//!   - `Const(n) ⊔ Const(n) = Const(n)`
-//!   - `Const(n) ⊔ Const(m) = ⊤` (if `n ≠ m`)
-//! - **Meet** (`⊓`):
-//!   - `Const(n) ⊓ Const(n) = Const(n)`
-//!   - `Const(n) ⊓ Const(m) = ⊥` (if `n ≠ m`)
-//!
-//! # Properties
-//!
-//! - **Precision**: Exact for constants, loses all information otherwise.
-//! - **Operations**: Arithmetic folds constants, produces Top on overflow or mixed operations.
-//! - **Use Cases**: Constant folding, dead code detection, conditional simplification.
-//!
-//! # Examples
+//! ## Example
 //!
 //! ```
 //! use abstract_interpretation::constant::{ConstValue, ConstantDomain, ConstantElement};
@@ -171,49 +143,14 @@ pub struct ConstantDomain;
 
 /// Abstract element representing constant propagation information for all variables.
 ///
-/// Maps each program variable to a constant value abstraction representing what we know
-/// about its value at a specific program point. This is the main data structure for
-/// flow-sensitive constant propagation analysis.
-///
-/// # Constant Values
-///
-/// Each variable can have one of:
-/// - `Const(i64)`: Definitely has this exact value
-/// - `Top`: Unknown/unconstrained (could be any value)
-/// - `Bottom`: Impossible (element unreachable)
-///
-/// # Representation
+/// The map stores per-variable facts; absence means `Top`.
+/// The `is_bottom` flag represents an unreachable program point.
 ///
 /// ```text
-/// ConstantElement {
-///     "x" → Const(42),    // x is definitely 42
-///     "y" → Const(10),    // y is definitely 10
-///     "z" → Top,         // z's value unknown (not in map)
-/// }
+/// { x ↦ Const(42), y ↦ Const(10) }
 /// ```
 ///
-/// # Use Cases
-///
-/// - **Compile-time evaluation**: `x = 5; y = x + 3;` → can evaluate to `y = Const(8)`
-/// - **Dead code elimination**: Determine which branches are always taken
-/// - **Optimization**: Replace variables with their known constant values
-/// - **Verification**: Check if invariants hold with exact values
-///
-/// # Lattice Structure
-///
-/// The constant domain forms a simple powerset-like lattice:
-///
-/// ```text
-///          Top (⊤)  ← Unknown value
-///         /   |   \
-///     Const(-1) Const(0) Const(1) ...  ← Specific constants
-///         \   |   /
-///       Bottom (⊥)  ← Unreachable
-/// ```
-///
-/// - **Order** (⊑): `Const(c) ⊑ Top` (specific is more precise than unknown)
-/// - **Join** (⊔): Different constants join to `Top` (lose precision)
-/// - **Meet** (⊓): Same constant meets to itself; different constants meet to `Bottom`
+/// means `x = 42` and `y = 10`, while all other variables are unconstrained.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct ConstantElement {
     /// Mapping from variables to their constant value abstractions

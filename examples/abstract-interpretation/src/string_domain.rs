@@ -128,6 +128,9 @@ pub struct StringLengthDomain {
 }
 
 impl StringLengthDomain {
+    /// Create a length domain backed by the interval domain.
+    ///
+    /// Each string variable `s` is represented by an interval for `len(s)`.
     pub fn new() -> Self {
         Self {
             interval_domain: IntervalDomain,
@@ -681,6 +684,9 @@ pub enum StringCase {
 pub struct StringCaseDomain;
 
 impl StringCaseDomain {
+    /// Abstract a concrete string into its casing class.
+    ///
+    /// This is a helper for building initial states from literals.
     pub fn from_string(&self, s: &str) -> StringCase {
         let has_upper = s.chars().any(|c| c.is_uppercase());
         let has_lower = s.chars().any(|c| c.is_lowercase());
@@ -693,14 +699,24 @@ impl StringCaseDomain {
         }
     }
 
+    /// Model `toUpperCase`.
+    ///
+    /// This is intentionally coarse: any non-bottom input maps to `Uppercase`.
     pub fn to_upper(&self, _elem: &StringCase) -> StringCase {
         StringCase::Uppercase
     }
 
+    /// Model `toLowerCase`.
+    ///
+    /// This is intentionally coarse: any non-bottom input maps to `Lowercase`.
     pub fn to_lower(&self, _elem: &StringCase) -> StringCase {
         StringCase::Lowercase
     }
 
+    /// Approximate concatenation.
+    ///
+    /// If either side is `Mixed`, the result is `Mixed`.
+    /// Otherwise it stays `Lowercase`/`Uppercase` when both sides agree.
     pub fn concat(&self, elem1: &StringCase, elem2: &StringCase) -> StringCase {
         match (elem1, elem2) {
             (StringCase::Bottom, _) | (_, StringCase::Bottom) => StringCase::Bottom,
@@ -781,6 +797,11 @@ pub enum StringNumeric {
 pub struct StringNumericDomain;
 
 impl StringNumericDomain {
+    /// Classify a concrete string literal by numeric parsability.
+    ///
+    /// - integers map to `IntegerStr`,
+    /// - other floats map to `FloatStr`,
+    /// - non-numbers map to `Top` (unknown / not a number).
     pub fn from_string(&self, s: &str) -> StringNumeric {
         if s.parse::<i64>().is_ok() {
             StringNumeric::IntegerStr
@@ -791,6 +812,10 @@ impl StringNumericDomain {
         }
     }
 
+    /// Approximate concatenation.
+    ///
+    /// Concatenating two numeric strings does not reliably yield a numeric string
+    /// (e.g. `"-1" + "-2" = "-1-2"`). This implementation is conservative.
     pub fn concat(&self, elem1: &StringNumeric, elem2: &StringNumeric) -> StringNumeric {
         match (elem1, elem2) {
             (StringNumeric::Bottom, _) | (_, StringNumeric::Bottom) => StringNumeric::Bottom,
@@ -888,6 +913,9 @@ pub struct RegexDomain {
 }
 
 impl RegexDomain {
+    /// Create a regex domain with a maximum pattern size.
+    ///
+    /// Concatenation widens to `Top` once the syntactic regex grows beyond `max_length`.
     pub fn new(max_length: usize) -> Self {
         Self { max_length }
     }

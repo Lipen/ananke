@@ -8,10 +8,15 @@ use std::hash::Hash;
 use super::domain::AbstractDomain;
 use super::expr::{NumExpr, NumPred};
 
-/// Numeric abstract domain for integer/real variables.
+/// Numeric abstract domain for program variables.
 ///
-/// This trait extends `AbstractDomain` with operations specific to
-/// numeric program analysis.
+/// A numeric domain equips an [`AbstractDomain`] with transformers for a small
+/// arithmetic language ([`NumExpr`], [`NumPred`]).
+///
+/// Conceptually:
+/// - `assign` implements `⟦x := e⟧♯`,
+/// - `assume` implements `⟦assume(p)⟧♯`, i.e. refinement by a guard,
+/// - `project` forgets a variable (existential quantification).
 pub trait NumericDomain: AbstractDomain {
     /// Variable identifier type.
     type Var: Clone + Eq + Hash + Debug;
@@ -19,25 +24,25 @@ pub trait NumericDomain: AbstractDomain {
     /// Numeric value type.
     type Value: Clone + Debug + PartialOrd;
 
-    /// Create element representing a constant assignment: `var = value`.
+    /// Create an element representing the constraint `var = value`.
     fn constant(&self, var: impl Into<Self::Var>, value: Self::Value) -> Self::Element;
 
-    /// Create element representing an interval constraint: `var ∈ [low, high]`.
+    /// Create an element representing the interval constraint `var ∈ [low, high]`.
     fn interval(&self, var: impl Into<Self::Var>, low: Self::Value, high: Self::Value) -> Self::Element;
 
-    /// Apply assignment: `var := expr`.
+    /// Apply assignment (`var := expr`).
     ///
-    /// Returns a new abstract element where `var` is bound to the result of `expr`.
+    /// This updates the binding for `var` using an abstract evaluation of `expr`.
     fn assign(&self, elem: &Self::Element, var: impl Into<Self::Var>, expr: &NumExpr<Self::Var, Self::Value>) -> Self::Element;
 
-    /// Assume a predicate holds: `elem ∧ pred`.
+    /// Refine the element under a guard (`assume(pred)`).
     ///
-    /// Refines the abstract element by adding constraint `pred`.
+    /// Implementations typically compute something like `elem ⊓ α(pred)`.
     fn assume(&self, elem: &Self::Element, pred: &NumPred<Self::Var, Self::Value>) -> Self::Element;
 
-    /// Project out a variable (existential quantification): `∃var. elem`.
+    /// Forget a variable (`∃var. elem`).
     ///
-    /// Removes all constraints on `var`.
+    /// After projection, `var` is unconstrained.
     fn project<Q>(&self, elem: &Self::Element, var: &Q) -> Self::Element
     where
         Self::Var: Borrow<Q>,
@@ -56,6 +61,8 @@ pub trait NumericDomain: AbstractDomain {
         Q: ?Sized + Hash + Eq;
 
     /// Rename variables using a substitution map.
+    ///
+    /// The default implementation is the identity.
     fn rename(&self, elem: &Self::Element, _subst: &HashMap<Self::Var, Self::Var>) -> Self::Element {
         // Default implementation: identity (can be overridden for efficiency)
         elem.clone()

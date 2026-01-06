@@ -1,32 +1,10 @@
-//! Sign abstract domain implementation.
+//! Sign abstract domain.
 //!
-//! The sign domain tracks the sign of numeric values, providing a coarse
-//! but very efficient abstraction. It's one of the classic examples in
-//! abstract interpretation and complements finer domains like intervals.
+//! This domain abstracts an integer by its possible sign(s).
+//! Concretely, each element corresponds to a subset of `{-, 0, +}` (plus `⊥`).
+//! The order is set inclusion on concretizations: `s1 ⊑ s2` iff `γ(s1) ⊆ γ(s2)`.
 //!
-//! # Elements
-//!
-//! The lattice has 8 elements representing sign properties:
-//! - `⊥` (Bottom): impossible/unreachable
-//! - `-` (Neg): strictly negative
-//! - `0` (Zero): exactly zero
-//! - `+` (Pos): strictly positive
-//! - `≤0` (NonPos): zero or negative
-//! - `≥0` (NonNeg): zero or positive
-//! - `≠0` (NonZero): negative or positive
-//! - `⊤` (Top): any value
-//!
-//! # Lattice Structure
-//!
-//! ```text
-//!           ⊤
-//!       /   |   \
-//!     ≤0   ≠0   ≥0
-//!    / \  / \  / \
-//!   -   0   +
-//!    \  |  /
-//!       ⊥
-//! ```
+//! The lattice has finite height, so widening can safely be `join`.
 
 use std::borrow::Borrow;
 use std::fmt;
@@ -102,60 +80,16 @@ impl fmt::Display for Sign {
 #[derive(Debug, Clone)]
 pub struct SignDomain;
 
-/// Abstract element in the sign domain (maps variables to signs).
-/// Abstract element representing sign information for all variables.
+/// Flow-sensitive sign information for all variables.
 ///
-/// Maps each program variable to a sign value representing the possible signs
-/// of its values at a specific program point. This is the main data structure for
-/// flow-sensitive sign analysis.
-///
-/// # Sign Values
-///
-/// Each variable can have one of:
-/// - `Pos`: Always positive (> 0)
-/// - `Neg`: Always negative (< 0)
-/// - `Zero`: Always exactly 0
-/// - `NonNeg`: Non-negative (≥20)
-/// - `NonPos`: Non-positive (≤0)
-/// - `NonZero`: Never zero (≠0)
-/// - `Top`: Unknown/unconstrained (any sign possible)
-/// - `Bottom`: Impossible (element unreachable)
-///
-/// # Representation
+/// The map stores constraints for variables; absence means `Top`.
+/// `is_bottom` represents an unreachable program point.
 ///
 /// ```text
-/// SignElement {
-///     "x" → Pos,           // x is always positive
-///     "y" → NonNeg,        // y is >= 0
-///     "z" → Top,           // z's sign unknown (not in map)
-/// }
+/// { x ↦ Pos, y ↦ NonNeg }
 /// ```
 ///
-/// # Use Cases
-///
-/// - **Division-by-zero detection**: `assume(x != 0)` narrows sign to `NonZero`
-/// - **Multiplication analysis**: `Pos * Neg = Neg`
-/// - **Dead code detection**: Contradictory signs lead to `Bottom`
-/// - **Optimization hints**: Signs can guide compiler optimizations
-///
-/// # Lattice Structure
-///
-/// The sign lattice forms a powerset-like structure:
-///
-/// ```text
-///                     Top (⊤)  ← Unknown
-///                    /  |  \
-///                   /   |   \
-///              Pos  Neg  Zero  NonZero
-///                   \   |   /
-///                 NonPos NonNeg
-///                       |
-///                     Bottom (⊥)  ← Unreachable
-/// ```
-///
-/// - **Order** (⊑): More specific signs are more precise
-/// - **Join** (⊔): Union of possible signs (widen to Top)
-/// - **Meet** (⊓): Intersection of signs (narrow, more precise)
+/// means `x > 0` and `y >= 0`, while all other variables are unconstrained.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct SignElement {
     /// Mapping from variables to their sign abstractions

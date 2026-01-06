@@ -30,6 +30,10 @@ where
     C: AbstractDomain,
     N: AbstractDomain,
 {
+    /// Create a component-wise product domain.
+    ///
+    /// This is a *plain* product: `join`, `meet`, `widen`, … are performed
+    /// independently on the control and numeric components.
     pub fn new(control: C, numeric: N) -> Self {
         Self { control, numeric }
     }

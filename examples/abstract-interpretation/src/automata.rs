@@ -1,8 +1,14 @@
-//! Automata-based Abstract Domain
+//! Automata-based abstract domain.
 //!
 //! This module implements a symbolic automata domain for string analysis.
-//! It uses symbolic transitions labeled by character predicates (e.g., character classes)
-//! to represent regular languages over Unicode characters.
+//! Elements denote regular languages over Unicode strings, represented as (symbolic) DFAs whose
+//! transitions are labeled by character predicates (e.g., character classes).
+//!
+//! ```text
+//! Concretization: γ(A) ⊆ Σ*   (the language accepted by automaton A)
+//! Order:          A1 ⊑ A2  iff  γ(A1) ⊆ γ(A2)
+//! Join/Meet:      union / intersection of languages
+//! ```
 
 use std::collections::{BTreeSet, HashMap, HashSet, VecDeque};
 use std::fmt::Debug;

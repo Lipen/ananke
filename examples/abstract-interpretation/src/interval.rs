@@ -1,27 +1,12 @@
-//! Interval abstract domain implementation.
+//! Interval abstract domain.
 //!
-//! This module provides interval analysis for numeric bounds tracking. There are three
-//! abstraction levels:
+//! `Interval` represents sets of integers of the form `[low, high]` with
+//! `low`/`high` possibly infinite.
+//! The lattice order is reverse-inclusion on bounds:
+//! ` [l1, h1] ⊑ [l2, h2]  <=>  l2 <= l1  and  h1 <= h2 `.
 //!
-//! - **[`IntervalElement`]**: Program state mapping variables to interval bounds
-//!   (e.g., `{"i" → [0, 10], "sum" → [0, 45]}`). Not a single interval, but the
-//!   entire program state at a control-flow point.
-//!
-//! - **[`IntervalDomain`]**: Analysis engine operating on `IntervalElement` to compute
-//!   abstract transfer functions (assign, assume, join, widen, etc.).
-//!
-//! - **[`Interval`]**: Single numeric value bounds `[low, high]` forming a lattice.
-//!   Use [`SingleIntervalDomain`] for simplified single-property analyses.
-//!
-//! # Lattice Structure
-//!
-//! The [`Interval`] type forms a lattice `[l, h]`:
-//!
-//! - **Order** (`⊑`): `[l₁, h₁] ⊑ [l₂, h₂]` iff `l₂ ≤ l₁` and `h₁ ≤ h₂`
-//! - **Join** (`⊔`): `[l₁, h₁] ⊔ [l₂, h₂] = [min(l₁, l₂), max(h₁, h₂)]`
-//! - **Meet** (`⊓`): `[l₁, h₁] ⊓ [l₂, h₂] = [max(l₁, l₂), min(h₁, h₂)]`
-//! - **Bottom** (`⊥`): `[+∞, -∞]` (unreachable)
-//! - **Top** (`⊤`): `[-∞, +∞]` (unconstrained)
+//! `IntervalElement` lifts intervals to a flow-sensitive environment:
+//! a partial map `Var -> Interval` where absence means `⊤`.
 
 use std::borrow::Borrow;
 use std::cmp::{max, min};
@@ -234,9 +219,7 @@ pub struct IntervalElement {
 }
 
 impl IntervalElement {
-    /// Create a new element with all variables unconstrained.
-    ///
-    /// All variables start with infinite bounds `[-∞, +∞]`.
+    /// Create an empty environment (all variables unconstrained).
     pub fn new() -> Self {
         Self {
             intervals: HashMap::new(),
@@ -258,7 +241,8 @@ impl IntervalElement {
     }
 
     /// Get the interval for a variable.
-    /// Returns the stored interval, or `[-∞, +∞]` if the variable is unconstrained.
+    ///
+    /// Returns the stored interval, or `⊤ = [-∞, +∞]` if the variable is unconstrained.
     pub fn get<Q>(&self, var: &Q) -> Interval
     where
         String: Borrow<Q>,
@@ -296,7 +280,7 @@ impl AbstractDomain for IntervalDomain {
         IntervalElement::bottom()
     }
 
-    /// Top element: all variables unconstrained (infinite bounds).
+    /// Top element: all variables unconstrained.
     fn top(&self) -> Self::Element {
         IntervalElement::top()
     }
@@ -312,7 +296,7 @@ impl AbstractDomain for IntervalDomain {
         false
     }
 
-    /// Order: `elem1 ⊑ elem2` iff all intervals in `elem1` are contained in `elem2`'s intervals.
+    /// Order: `e1 ⊑ e2` iff for every variable `x`, `e1(x) ⊑ e2(x)`.
     fn le(&self, elem1: &Self::Element, elem2: &Self::Element) -> bool {
         if elem1.is_bottom {
             return true;
@@ -331,7 +315,7 @@ impl AbstractDomain for IntervalDomain {
         true
     }
 
-    /// Join: widens intervals per-variable (union of ranges, approximation).
+    /// Join: component-wise interval join.
     fn join(&self, elem1: &Self::Element, elem2: &Self::Element) -> Self::Element {
         if elem1.is_bottom {
             return elem2.clone();
@@ -353,9 +337,7 @@ impl AbstractDomain for IntervalDomain {
         result
     }
 
-    /// Meet: narrows intervals per-variable (intersection of ranges, refinement).
-    ///
-    /// Returns bottom if any variable's intersection is empty (unsatisfiable).
+    /// Meet: component-wise interval meet; returns `⊥` on contradiction.
     fn meet(&self, elem1: &Self::Element, elem2: &Self::Element) -> Self::Element {
         if elem1.is_bottom || elem2.is_bottom {
             return IntervalElement::bottom();
@@ -420,7 +402,7 @@ impl NumericDomain for IntervalDomain {
         elem
     }
 
-    /// Assign variable the interval result of evaluating an expression using interval arithmetic.
+    /// Assign `var := expr` using interval arithmetic.
     fn assign(&self, elem: &Self::Element, var: impl Into<Self::Var>, expr: &NumExpr<Self::Var, Self::Value>) -> Self::Element {
         if elem.is_bottom {
             return elem.clone();
@@ -432,8 +414,9 @@ impl NumericDomain for IntervalDomain {
         result
     }
 
-    /// Refine intervals by constraint propagation from predicates (supports `∧`, `∨`, `¬`, comparisons).
-    /// Iteratively isolates variables to narrow bounds. Returns bottom if predicate is unsatisfiable.
+    /// Refine under a predicate using lightweight constraint propagation.
+    ///
+    /// Supports boolean connectives and comparisons; disjunction is approximated with `join`.
     fn assume(&self, elem: &Self::Element, pred: &NumPred<Self::Var, Self::Value>) -> Self::Element {
         if elem.is_bottom {
             return elem.clone();

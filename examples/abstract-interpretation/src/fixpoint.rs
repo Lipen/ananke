@@ -15,6 +15,12 @@ pub struct FixpointEngine<D: AbstractDomain> {
 }
 
 impl<D: AbstractDomain> FixpointEngine<D> {
+    /// Create a fixpoint engine for `domain` with conservative defaults.
+    ///
+    /// The defaults are tuned for small examples:
+    /// - widening after `widening_threshold` iterations,
+    /// - then `narrowing_iterations` refinement steps,
+    /// - with a hard cap of `max_iterations` to avoid accidental non-termination.
     pub fn new(domain: D) -> Self {
         Self {
             domain,
@@ -81,6 +87,9 @@ impl<D: AbstractDomain> FixpointEngine<D> {
     }
 
     /// Narrowing phase to refine over-approximation.
+    ///
+    /// Conceptually, this applies a few steps of `x := x △ f(x)` to claw back
+    /// precision lost to widening.
     fn narrow<F>(&self, mut x: D::Element, f: F) -> D::Element
     where
         F: Fn(&D::Element) -> D::Element,

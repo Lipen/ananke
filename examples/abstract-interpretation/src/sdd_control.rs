@@ -1,3 +1,11 @@
+//! SDD-backed control domain.
+//!
+//! Elements are SDD formulas representing feasible control states.
+//! The lattice operations follow boolean semantics:
+//! - order: `φ ⊑ ψ` iff `φ => ψ`,
+//! - join: `φ ⊔ ψ = φ ∨ ψ`,
+//! - meet: `φ ⊓ ψ = φ ∧ ψ`.
+
 use std::cell::RefCell;
 use std::collections::HashMap;
 use std::fmt;
@@ -16,10 +24,12 @@ pub struct SddControlState {
 }
 
 impl SddControlState {
+    /// Wrap a raw SDD node as a control-state element.
     pub fn new(phi: SddId, manager: Rc<SddManager>) -> Self {
         Self { phi, manager }
     }
 
+    /// Return the underlying SDD node.
     pub fn phi(&self) -> SddId {
         self.phi
     }
@@ -80,38 +90,45 @@ impl SddControlDomain {
         next
     }
 
+    /// Construct a state that enforces `name` to be true.
     pub fn mk_var_true(&self, name: &str) -> SddControlState {
         let var_id = self.allocate_var(name);
         let phi = self.manager.var(var_id);
         SddControlState::new(phi, Rc::clone(&self.manager))
     }
 
+    /// Construct a state that enforces `name` to be false.
     pub fn mk_var_false(&self, name: &str) -> SddControlState {
         let var_id = self.allocate_var(name);
         let phi = self.manager.neg_var(var_id);
         SddControlState::new(phi, Rc::clone(&self.manager))
     }
 
+    /// Conjunction (`a ∧ b`).
     pub fn and(&self, a: &SddControlState, b: &SddControlState) -> SddControlState {
         let phi = self.manager.and(a.phi, b.phi);
         SddControlState::new(phi, Rc::clone(&self.manager))
     }
 
+    /// Disjunction (`a ∨ b`).
     pub fn or(&self, a: &SddControlState, b: &SddControlState) -> SddControlState {
         let phi = self.manager.or(a.phi, b.phi);
         SddControlState::new(phi, Rc::clone(&self.manager))
     }
 
+    /// Negation (`¬a`).
     pub fn not(&self, a: &SddControlState) -> SddControlState {
         let phi = self.manager.negate(a.phi);
         SddControlState::new(phi, Rc::clone(&self.manager))
     }
 
+    /// Check implication (`a => b`).
     pub fn implies(&self, a: &SddControlState, b: &SddControlState) -> bool {
         let impl_sdd = self.manager.implies(a.phi, b.phi);
         self.manager.is_true(impl_sdd)
     }
 
+    /// Count satisfying assignments for this control state.
     pub fn model_count(&self, state: &SddControlState) -> BigUint {
         self.manager.model_count(state.phi)
     }

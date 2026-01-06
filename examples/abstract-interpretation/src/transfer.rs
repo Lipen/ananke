@@ -7,16 +7,24 @@ use super::numeric::NumericDomain;
 
 /// Abstract transfer function for statements.
 ///
-/// Implements abstract semantics: `⟦stmt⟧♯: Element → Element`
+/// Implements abstract semantics: `⟦stmt⟧♯ : Element -> Element`.
+///
+/// A transfer function is usually used together with a fixpoint engine for loops.
 pub trait TransferFunction<D: AbstractDomain> {
     /// Type of program variables
     type Var: Clone;
 
-    /// Apply transfer function: `⟦stmt⟧♯(elem)`
+    /// Apply the transfer function: `⟦stmt⟧♯(elem)`.
     fn apply(&self, domain: &D, elem: &D::Element, stmt: &Stmt<Self::Var>) -> D::Element;
 }
 
 /// Transfer function for numeric domains.
+///
+/// Handles `skip`, assignments, sequencing, conditionals (by splitting and joining),
+/// `assert`/`assume` (as refinement), and `havoc` (as projection).
+///
+/// Note: `while` is intentionally left as a no-op placeholder; use
+/// [`crate::fixpoint::FixpointEngine`] to compute loop invariants.
 pub struct NumericTransferFunction;
 
 impl<D> TransferFunction<D> for NumericTransferFunction

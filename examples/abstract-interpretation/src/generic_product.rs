@@ -1,7 +1,9 @@
-//! Generic Product Domain.
+//! Reduced product of two abstract domains.
 //!
-//! A generic implementation of the Reduced Product of two abstract domains.
-//! Allows combining any D1 and D2 (e.g., Interval x Congruence).
+//! This module defines a generic product `D1 × D2` with a hook for *reduction*:
+//! a (usually) monotone function `ρ : D1×D2 -> D1×D2` that lets components
+//! exchange information.
+//! The default `reduce` only propagates `⊥`.
 
 use std::fmt::Debug;
 
@@ -23,14 +25,21 @@ where
     D1: AbstractDomain,
     D2: AbstractDomain,
 {
+    /// Create a product domain `D1 × D2`.
+    ///
+    /// The product order is component-wise: `(a1,a2) ⊑ (b1,b2)` iff
+    /// `a1 ⊑ b1` and `a2 ⊑ b2`.
     pub fn new(d1: D1, d2: D2) -> Self {
         Self { d1, d2 }
     }
 
-    /// Reduce the product element.
-    /// This is where domains exchange information to refine each other.
-    /// Default implementation does nothing.
-    /// Specific instantiations should override or wrap this.
+    /// Apply a domain-specific reduction step.
+    ///
+    /// Reduction is the place to encode cross-domain implications (e.g.
+    /// `Interval(x) = [0,0]` implies `Sign(x) = Zero`).
+    ///
+    /// The default implementation only enforces the invariant that if either
+    /// component is `⊥`, then the whole product is `⊥`.
     pub fn reduce(&self, elem: &mut ProductElement<D1::Element, D2::Element>) {
         // If either is bottom, the whole product is bottom
         if self.d1.is_bottom(&elem.0) || self.d2.is_bottom(&elem.1) {

@@ -1,4 +1,30 @@
-//! Numeric expressions and predicates.
+//! Numeric expressions, boolean predicates, and a tiny statement language.
+//!
+//! These types form the *input language* for the example analyses.
+//! A numeric domain provides abstract transformers for this language, typically
+//! written as `⟦stmt⟧♯ : E -> E`.
+//!
+//! The AST is intentionally small:
+//! - [`NumExpr`] for arithmetic expressions,
+//! - [`NumPred`] for boolean conditions over numeric expressions,
+//! - [`Stmt`] for straight-line code plus `if`/`while`/`assert`/`assume`.
+//!
+//! ## Example
+//!
+//! ```
+//! use abstract_interpretation::expr::{NumExpr, Stmt};
+//!
+//! type V = String;
+//! type E = NumExpr<V, i64>;
+//! type S = Stmt<V>;
+//!
+//! // if (x >= 0) { y := x + 1 } else { y := -x }
+//! let stmt = S::if_stmt(
+//!     E::var("x").ge(E::constant(0)),
+//!     S::assign("y", E::var("x").add(E::constant(1))),
+//!     S::assign("y", E::var("x").neg()),
+//! );
+//! ```
 
 use std::fmt::Debug;
 
@@ -24,12 +50,12 @@ pub enum NumExpr<V, C = i64> {
 }
 
 impl<V, C> NumExpr<V, C> {
-    /// Variable reference
+    /// Build a variable reference.
     pub fn var(var: impl Into<V>) -> Self {
         NumExpr::Var(var.into())
     }
 
-    /// Constant value
+    /// Build a constant.
     pub fn constant(value: impl Into<C>) -> Self {
         NumExpr::Const(value.into())
     }
@@ -123,17 +149,17 @@ pub enum NumPred<V, C = i64> {
 }
 
 impl<V, C> NumPred<V, C> {
-    /// Negation: !p
+    /// Negation (`!p`).
     pub fn not(self) -> Self {
         NumPred::Not(Box::new(self))
     }
 
-    /// Conjunction: p1 && p2
+    /// Conjunction (`p1 && p2`).
     pub fn and(self, other: Self) -> Self {
         NumPred::And(Box::new(self), Box::new(other))
     }
 
-    /// Disjunction: p1 || p2
+    /// Disjunction (`p1 || p2`).
     pub fn or(self, other: Self) -> Self {
         NumPred::Or(Box::new(self), Box::new(other))
     }
@@ -161,7 +187,7 @@ pub enum Stmt<V> {
 }
 
 impl<V> Stmt<V> {
-    /// Create a skip statement
+    /// Create a `skip` statement.
     pub fn skip() -> Self {
         Stmt::Skip
     }
@@ -176,12 +202,14 @@ impl<V> Stmt<V> {
         Stmt::Seq(Box::new(s1), Box::new(s2))
     }
 
-    /// Fluent chaining: `self; other`
+    /// Fluent chaining for sequencing (`self; other`).
     pub fn then(self, other: Self) -> Self {
         Self::seq(self, other)
     }
 
-    /// Chain multiple statements into a single sequence
+    /// Chain multiple statements into a single sequence.
+    ///
+    /// The empty iterator yields `skip`.
     pub fn chain<I: IntoIterator<Item = Self>>(stmts: I) -> Self {
         stmts.into_iter().reduce(|acc, stmt| acc.then(stmt)).unwrap_or(Stmt::Skip)
     }

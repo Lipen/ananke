@@ -4,24 +4,22 @@ use std::fmt::Debug;
 
 /// Abstract domain interface.
 ///
-/// An abstract domain represents a lattice structure used for
-/// approximating program states in static analysis.
+/// A domain provides a lattice of abstract elements together with the usual operations.
+/// The intended reading is “`a ⊑ b` means `a` is at least as precise as `b`”.
 ///
-/// # Lattice Properties
-///
-/// An abstract domain must satisfy:
-/// - Reflexivity: `∀a. a ⊑ a`
-/// - Transitivity: `∀a,b,c. a ⊑ b ∧ b ⊑ c ⇒ a ⊑ c`
-/// - Antisymmetry: `∀a,b. a ⊑ b ∧ b ⊑ a ⇒ a = b`
-/// - Join/Meet properties: See lattice theory
+/// ```text
+/// Reflexive:      a ⊑ a
+/// Transitive:     a ⊑ b ∧ b ⊑ c  =>  a ⊑ c
+/// Antisymmetric:  a ⊑ b ∧ b ⊑ a  =>  a = b
+/// ```
 pub trait AbstractDomain: Clone + Debug + Sized {
     /// The type representing abstract elements.
     type Element: Clone + Debug;
 
-    /// Create the bottom element (`⊥`): represents the empty set.
+    /// Bottom element (`⊥`), representing the empty set of concrete states.
     fn bottom(&self) -> Self::Element;
 
-    /// Create the top element (`⊤`): represents all possible states.
+    /// Top element (`⊤`), representing “any state is possible”.
     fn top(&self) -> Self::Element;
 
     /// Check if an element is bottom.
@@ -30,42 +28,27 @@ pub trait AbstractDomain: Clone + Debug + Sized {
     /// Check if an element is top.
     fn is_top(&self, elem: &Self::Element) -> bool;
 
-    /// Partial order: `elem1 ⊑ elem2` (`elem1` is more precise than `elem2`).
+    /// Partial order (`⊑`).
     ///
-    /// Returns true if `elem1` represents a subset of states represented by `elem2`.
+    /// Returns `true` iff `elem1` is at least as precise as `elem2`.
     fn le(&self, elem1: &Self::Element, elem2: &Self::Element) -> bool;
 
-    /// Join (`⊔`): least upper bound, over-approximation.
-    ///
-    /// Returns the smallest element that contains both inputs.
-    /// Represents union of state sets.
+    /// Join (`⊔`): least upper bound (merge / over-approximation).
     fn join(&self, elem1: &Self::Element, elem2: &Self::Element) -> Self::Element;
 
-    /// Meet (`⊓`): greatest lower bound, refinement.
-    ///
-    /// Returns the largest element contained in both inputs.
-    /// Represents intersection of state sets.
+    /// Meet (`⊓`): greatest lower bound (refinement).
     fn meet(&self, elem1: &Self::Element, elem2: &Self::Element) -> Self::Element;
 
-    /// Widening (`∇`): accelerates convergence in fixpoint computation.
+    /// Widening (`∇`) used during fixpoint iteration.
     ///
-    /// Returns an over-approximation that ensures termination.
-    /// Must satisfy: `elem1 ⊑ elem1 ∇ elem2`
-    ///
-    /// **Why no default?** Widening must extrapolate (e.g., to ±∞) to force
-    /// termination on ascending chains. Using join would not guarantee this.
-    /// Each domain needs domain-specific widening logic.
+    /// Must satisfy `elem1 ⊑ (elem1 ∇ elem2)` and should enforce convergence on
+    /// infinite-height domains.
     fn widen(&self, elem1: &Self::Element, elem2: &Self::Element) -> Self::Element;
 
-    /// Narrowing (`∆`): refines over-approximation after widening.
+    /// Narrowing (`△`) after widening.
     ///
-    /// Returns a more precise element without losing convergence guarantees.
-    /// Default implementation uses meet, which is safe and often sufficient.
-    ///
-    /// **Why meet as default?** After widening converges, narrowing refines
-    /// by intersecting with more precise approximations. Meet provides
-    /// a safe conservative default, and narrowing is limited to few iterations.
-    /// Domains can override for better precision (e.g., dual widening).
+    /// The default uses meet (`⊓`), which is safe and typically applied for a small
+    /// bounded number of iterations.
     fn narrow(&self, elem1: &Self::Element, elem2: &Self::Element) -> Self::Element {
         self.meet(elem1, elem2)
     }

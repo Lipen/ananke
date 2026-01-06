@@ -1,60 +1,31 @@
-//! BDD Control Domain: Path-Sensitive Abstract Interpretation
+//! BDD-backed control (boolean) domain.
 //!
-//! This module implements a BDD-based control domain for path-sensitive static analysis.
-//! The key idea is to partition program states based on Boolean control variables (flags,
-//! mode indicators, branch conditions) and maintain separate numeric invariants for each
-//! control partition.
-//!
-//! # Theory
-//!
-//! The BDD Control Domain is defined as:
+//! This module models boolean control conditions as a lattice of formulas, represented
+//! canonically as BDDs. It is typically used as the control component of a (reduced)
+//! product so that different control partitions can carry different numeric invariants.
 //!
 //! ```text
-//! D_BDD = (E_BDD, ⊑, ⊔, ⊓, ∇, ⊥, ⊤)
+//! Elements: formulas φ over control variables
+//! Order:    φ1 ⊑ φ2  iff  (φ1 => φ2)
+//! Join:     φ1 ⊔ φ2 = (φ1 ∨ φ2)
+//! Meet:     φ1 ⊓ φ2 = (φ1 ∧ φ2)
+//! ⊥:        false   (no paths)
+//! ⊤:        true    (all paths)
 //! ```
-//!
-//! Where:
-//! - **Elements**: BDDs over Boolean control variables
-//! - **Partial Order**: `φ₁ ⊑ φ₂` ⟺ `φ₁ ⇒ φ₂` (logical implication)
-//! - **Join**: `φ₁ ⊔ φ₂` = `φ₁ ∨ φ₂` (disjunction)
-//! - **Meet**: `φ₁ ⊓ φ₂` = `φ₁ ∧ φ₂` (conjunction)
-//! - **Bottom**: `false` (unreachable)
-//! - **Top**: `true` (all paths reachable)
 //!
 //! # Example
 //!
 //! ```rust
 //! use abstract_interpretation::*;
-//! use std::rc::Rc;
 //!
-//! // Create BDD control domain
 //! let domain = BddControlDomain::new();
+//! domain.allocate_var("flag");
 //!
-//! // Allocate control variable "flag"
-//! let var_id = domain.allocate_var("flag");
-//!
-//! // Create control state: flag = true
-//! let state_true = domain.mk_var_true("flag");
-//! let state_false = domain.mk_var_false("flag");
-//!
-//! // Join: flag could be true OR false
-//! let state_any = domain.join(&state_true, &state_false);
-//! assert!(domain.is_top(&state_any)); // true (no constraint)
-//!
-//! // Meet: flag is both true AND false (contradiction)
-//! let state_bot = domain.meet(&state_true, &state_false);
-//! assert!(domain.is_bottom(&state_bot)); // unreachable
+//! let t = domain.mk_var_true("flag");
+//! let f = domain.mk_var_false("flag");
+//! assert!(domain.is_top(&domain.join(&t, &f)));
+//! assert!(domain.is_bottom(&domain.meet(&t, &f)));
 //! ```
-//!
-//! # Architecture
-//!
-//! The control domain works with any numeric domain through the product construction:
-//!
-//! ```text
-//! ControlSensitiveProduct = BddControlDomain × NumericDomain
-//! ```
-//!
-//! This allows maintaining separate numeric invariants per control path.
 
 use std::cell::RefCell;
 use std::collections::HashMap;
@@ -190,35 +161,8 @@ impl fmt::Display for ControlState {
 
 /// BDD-based control domain for path-sensitive analysis.
 ///
-/// This domain represents sets of Boolean control states using Binary Decision Diagrams.
-/// Control variables are Boolean program variables (flags, mode indicators) that determine
-/// which control path the program is on.
-///
-/// # Key Features
-///
-/// - **Compact Representation**: BDDs can represent exponentially many control states
-/// - **Canonical Form**: BDDs are automatically reduced and canonical
-/// - **Efficient Operations**: Boolean operations (AND, OR, NOT) are polynomial
-/// - **Path Sensitivity**: Different control paths maintain separate invariants
-///
-/// # Usage
-///
-/// ```rust
-/// use abstract_interpretation::*;
-///
-/// let domain = BddControlDomain::new();
-///
-/// // Allocate control variables
-/// domain.allocate_var("flag");
-/// domain.allocate_var("initialized");
-///
-/// // Create states
-/// let state1 = domain.mk_var_true("flag");
-/// let state2 = domain.mk_var_false("flag");
-///
-/// // Combine with Boolean operations
-/// let any_flag = domain.join(&state1, &state2);  // flag ∈ {true, false}
-/// ```
+/// This domain builds and manipulates boolean path conditions as BDDs.
+/// It is most useful as the control component in a product domain.
 #[derive(Clone)]
 pub struct BddControlDomain {
     /// Shared BDD manager

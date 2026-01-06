@@ -1,23 +1,20 @@
-//! Type Abstract Domain.
+//! Type abstract domain.
 //!
-//! This module implements an abstract domain for tracking the runtime types of variables.
-//! It is particularly useful for analyzing dynamically typed languages (like Python or JavaScript)
-//! or code with polymorphic values, where a variable may hold values of different types at different
-//! program points.
+//! This module tracks possible runtime types for each value, which is useful for dynamically typed
+//! languages or code with polymorphic values.
 //!
-//! # Lattice Structure
+//! The element domain is a finite powerset lattice over [`Type`]:
 //!
-//! The domain is a **powerset lattice** over a finite set of concrete types.
+//! ```text
+//! Elements:  sets of types
+//! ⊥:         empty set
+//! ⊤:         all types ("unknown")
+//! Order:     A ⊑ B  iff  A ⊆ B
+//! Join:      A ⊔ B = A ∪ B
+//! Meet:      A ⊓ B = A ∩ B
+//! ```
 //!
-//! - **Elements**: [Sets][TypeSet] of possible [Type]s.
-//! - **Bottom** (`⊥`): The empty set, representing unreachable code or a variable with no possible type.
-//! - **Top** (`⊤`): The set of all possible types (or "unknown"), representing a variable that could be anything.
-//! - **Order** (`⊑`): Subset inclusion. `A ⊑ B` iff `A ⊆ B`.
-//! - **Join** (`⊔`): Set union. `A ⊔ B = A ∪ B`.
-//! - **Meet** (`⊓`): Set intersection. `A ⊓ B = A ∩ B`.
-//!
-//! Since the set of concrete types is finite, the lattice has finite height. Therefore, the widening
-//! operator (`∇`) is equivalent to the join operator (`⊔`), and convergence is guaranteed.
+//! Since the carrier set is finite, widening (`∇`) is implemented as join (`⊔`).
 
 use std::collections::BTreeSet;
 use std::fmt::Debug;
