@@ -95,9 +95,8 @@ fn analyze_path_insensitive() {
     println!("After merging all control paths:");
     println!("  mode ∈ {{INIT, READY, ACTIVE, ERROR}} (all modes possible)");
 
-    if let Some((low, high)) = domain.get_bounds(&merged, "actuator") {
-        println!("  actuator ∈ [{}, {}]", low, high);
-    }
+    let merged_actuator = merged.get("actuator");
+    println!("  actuator ∈ {}", merged_actuator);
 
     println!();
     println!("⚠️ IMPRECISION: Cannot verify that actuator=1 only in ACTIVE mode!");
@@ -192,40 +191,39 @@ fn analyze_path_sensitive() {
     // Verify each mode has the correct actuator bounds
     // INIT: actuator = 0
     if let Some(num_state) = all_states.get(&ctrl_init) {
-        if let Some((low, high)) = numeric_domain.get_bounds(num_state, "actuator") {
-            assert_eq!((low, high), (0, 0), "INIT mode: actuator should be [0,0]");
-            println!("✅ P2: In INIT mode: actuator = 0");
-        }
+        let init_actuator = num_state.get("actuator");
+        println!("✅ P2: In INIT mode: actuator ∈ {}", init_actuator);
+        assert_eq!(init_actuator, Interval::constant(0), "INIT mode: actuator should be [0,0]");
     } else {
         panic!("INIT mode partition missing!");
     }
 
     // READY: actuator = 0
     if let Some(num_state) = all_states.get(&ctrl_ready) {
-        if let Some((low, high)) = numeric_domain.get_bounds(num_state, "actuator") {
-            assert_eq!((low, high), (0, 0), "READY mode: actuator should be [0,0]");
-            println!("✅ P2: In READY mode: actuator = 0");
-        }
+        let ready_actuator = num_state.get("actuator");
+        println!("✅ P2: In READY mode: actuator ∈ {}", ready_actuator);
+        assert_eq!(ready_actuator, Interval::constant(0), "READY mode: actuator should be [0,0]");
     } else {
         panic!("READY mode partition missing!");
     }
 
     // ACTIVE: actuator = 1
     if let Some(num_state) = all_states.get(&ctrl_active) {
-        if let Some((low, high)) = numeric_domain.get_bounds(num_state, "actuator") {
-            assert_eq!((low, high), (1, 1), "ACTIVE mode: actuator should be [1,1]");
-            println!("✅ P4: In ACTIVE mode: actuator = 1 (only mode where actuator can be 1)");
-        }
+        let active_actuator = num_state.get("actuator");
+        println!(
+            "✅ P4: In ACTIVE mode: actuator ∈ {} (only mode where actuator can be 1)",
+            active_actuator
+        );
+        assert_eq!(active_actuator, Interval::constant(1), "ACTIVE mode: actuator should be [1,1]");
     } else {
         panic!("ACTIVE mode partition missing!");
     }
 
     // ERROR: actuator = 0
     if let Some(num_state) = all_states.get(&ctrl_error) {
-        if let Some((low, high)) = numeric_domain.get_bounds(num_state, "actuator") {
-            assert_eq!((low, high), (0, 0), "ERROR mode: actuator should be [0,0]");
-            println!("✅ P3: In ERROR mode: actuator = 0");
-        }
+        let error_actuator = num_state.get("actuator");
+        println!("✅ P3: In ERROR mode: actuator ∈ {}", error_actuator);
+        assert_eq!(error_actuator, Interval::constant(0), "ERROR mode: actuator should be [0,0]");
     } else {
         panic!("ERROR mode partition missing!");
     }

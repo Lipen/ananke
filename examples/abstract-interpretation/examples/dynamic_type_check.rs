@@ -61,8 +61,10 @@ fn main() {
     println!("  y type: {:?}", y_branch2);
 
     // 3. Join branches
+    let x_final = domain.join(&x_branch1, &x_branch2);
     let y_final = domain.join(&y_branch1, &y_branch2);
     println!("\nFinal Result:");
+    println!("  x type: {:?}", x_final);
     println!("  y type: {:?}", y_final);
 
     // Verify property: y is always Integer
@@ -72,8 +74,4 @@ fn main() {
         println!("  ✗ Failed: Result 'y' might not be an Integer.");
     }
     assert!(domain.is_exactly(&y_final, Type::Integer), "Result 'y' should be exactly Integer");
-
-    println!("\n=======================================================");
-    println!("   Analysis Complete");
-    println!("=======================================================\n");
 }

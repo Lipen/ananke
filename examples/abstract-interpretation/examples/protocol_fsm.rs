@@ -89,9 +89,8 @@ fn analyze_path_insensitive() {
 
     println!();
     println!("After merging all states:");
-    if let Some((low, high)) = domain.get_bounds(&merged, "data_size") {
-        println!("  data_size ∈ [{}, {}]", low, high);
-    }
+    let merged_size = merged.get("data_size");
+    println!("  data_size ∈ {}", merged_size);
 
     println!();
     println!("⚠️  IMPRECISION: Cannot determine current protocol state!");
@@ -181,40 +180,40 @@ fn analyze_path_sensitive() {
 
     // INIT: data_size = 0
     if let Some(num_state) = all_states.get(&ctrl_init) {
-        if let Some((low, high)) = numeric_domain.get_bounds(num_state, "data_size") {
-            assert_eq!((low, high), (0, 0), "INIT state: data_size should be 0");
-            println!("  INIT partition:  data_size ∈ [{}, {}]", low, high);
-        }
+        let init_size = num_state.get("data_size");
+        println!("  INIT partition:  data_size ∈ {}", init_size);
+        assert_eq!(init_size, Interval::constant(0), "INIT state: data_size should be 0");
     } else {
         panic!("INIT partition missing!");
     }
 
     // READY: data_size = 0
     if let Some(num_state) = all_states.get(&ctrl_ready) {
-        if let Some((low, high)) = numeric_domain.get_bounds(num_state, "data_size") {
-            assert_eq!((low, high), (0, 0), "READY state: data_size should be 0");
-            println!("  READY partition: data_size ∈ [{}, {}]", low, high);
-        }
+        let ready_size = num_state.get("data_size");
+        println!("  READY partition: data_size ∈ {}", ready_size);
+        assert_eq!(ready_size, Interval::constant(0), "READY state: data_size should be 0");
     } else {
         panic!("READY partition missing!");
     }
 
     // DATA: data_size ∈ [1, 1500]
     if let Some(num_state) = all_states.get(&ctrl_data) {
-        if let Some((low, high)) = numeric_domain.get_bounds(num_state, "data_size") {
-            assert_eq!((low, high), (1, 1500), "DATA state: data_size should be [1,1500]");
-            println!("  DATA partition:  data_size ∈ [{}, {}]", low, high);
-        }
+        let data_size = num_state.get("data_size");
+        println!("  DATA partition:  data_size ∈ {}", data_size);
+        assert_eq!(
+            data_size,
+            Interval::new(Bound::Finite(1), Bound::Finite(1500)),
+            "DATA state: data_size should be [1,1500]"
+        );
     } else {
         panic!("DATA partition missing!");
     }
 
     // ACK: data_size = 0
     if let Some(num_state) = all_states.get(&ctrl_ack) {
-        if let Some((low, high)) = numeric_domain.get_bounds(num_state, "data_size") {
-            assert_eq!((low, high), (0, 0), "ACK state: data_size should be 0");
-            println!("  ACK partition:   data_size ∈ [{}, {}]", low, high);
-        }
+        let ack_size = num_state.get("data_size");
+        println!("  ACK partition:   data_size ∈ {}", ack_size);
+        assert_eq!(ack_size, Interval::constant(0), "ACK state: data_size should be 0");
     } else {
         panic!("ACK partition missing!");
     }

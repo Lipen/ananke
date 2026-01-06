@@ -64,20 +64,24 @@ fn example_path_insensitive() {
     let yellow_state = domain.interval("timer", 0, 5);
 
     // Join all states (path-insensitive)
-    let mut merged = red_state;
+    let mut merged = red_state.clone();
     merged = domain.join(&merged, &green_state);
     merged = domain.join(&merged, &yellow_state);
 
     println!("Individual states:");
-    println!("  RED:    timer ∈ [0, 60]");
-    println!("  GREEN:  timer ∈ [0, 45]");
-    println!("  YELLOW: timer ∈ [0, 5]");
+    println!("  RED:    timer ∈ {}", red_state.get("timer"));
+    println!("  GREEN:  timer ∈ {}", green_state.get("timer"));
+    println!("  YELLOW: timer ∈ {}", yellow_state.get("timer"));
 
     println!();
     println!("After merging all states:");
-    if let Some((low, high)) = domain.get_bounds(&merged, "timer") {
-        println!("  timer ∈ [{}, {}]", low, high);
-    }
+    let merged_timer = merged.get("timer");
+    println!("  timer ∈ {}", merged_timer);
+    assert_eq!(
+        merged_timer,
+        Interval::new(Bound::Finite(0), Bound::Finite(60)),
+        "Merged timer should be [0, 60]"
+    );
 
     println!();
     println!("⚠️ IMPRECISION: Cannot determine which state the light is in!");
@@ -159,30 +163,39 @@ fn example_path_sensitive() {
 
     // RED: timer ∈ [0, 60]
     if let Some(num_state) = all_states.get(&ctrl_red) {
-        if let Some((low, high)) = numeric_domain.get_bounds(num_state, "timer") {
-            assert_eq!((low, high), (0, 60), "RED state: timer should be [0,60]");
-            println!("  RED partition:    timer ∈ [{}, {}]", low, high);
-        }
+        let red_timer = num_state.get("timer");
+        println!("  RED partition:    timer ∈ {}", red_timer);
+        assert_eq!(
+            red_timer,
+            Interval::new(Bound::Finite(0), Bound::Finite(60)),
+            "RED state: timer should be [0,60]"
+        );
     } else {
         panic!("RED partition missing!");
     }
 
     // GREEN: timer ∈ [0, 45]
     if let Some(num_state) = all_states.get(&ctrl_green) {
-        if let Some((low, high)) = numeric_domain.get_bounds(num_state, "timer") {
-            assert_eq!((low, high), (0, 45), "GREEN state: timer should be [0,45]");
-            println!("  GREEN partition:  timer ∈ [{}, {}]", low, high);
-        }
+        let green_timer = num_state.get("timer");
+        println!("  GREEN partition:  timer ∈ {}", green_timer);
+        assert_eq!(
+            green_timer,
+            Interval::new(Bound::Finite(0), Bound::Finite(45)),
+            "GREEN state: timer should be [0,45]"
+        );
     } else {
         panic!("GREEN partition missing!");
     }
 
     // YELLOW: timer ∈ [0, 5]
     if let Some(num_state) = all_states.get(&ctrl_yellow) {
-        if let Some((low, high)) = numeric_domain.get_bounds(num_state, "timer") {
-            assert_eq!((low, high), (0, 5), "YELLOW state: timer should be [0,5]");
-            println!("  YELLOW partition: timer ∈ [{}, {}]", low, high);
-        }
+        let yellow_timer = num_state.get("timer");
+        println!("  YELLOW partition: timer ∈ {}", yellow_timer);
+        assert_eq!(
+            yellow_timer,
+            Interval::new(Bound::Finite(0), Bound::Finite(5)),
+            "YELLOW state: timer should be [0,5]"
+        );
     } else {
         panic!("YELLOW partition missing!");
     }

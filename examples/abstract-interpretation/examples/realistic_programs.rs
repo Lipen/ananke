@@ -47,11 +47,9 @@ fn example_array_bounds_checking() {
     // i = 0
     println!("After i = 0:");
     let state = interval_domain.constant("i", 0);
-    if let Some((low, high)) = interval_domain.get_bounds(&state, "i") {
-        println!("  i ∈ [{}, {}]", low, high);
-        assert_eq!(low, 0, "i initialized to 0");
-        assert_eq!(high, 0, "i initialized to 0");
-    }
+    let i_val = state.get("i");
+    println!("  i ∈ {}", i_val);
+    assert_eq!(i_val, Interval::constant(0), "i initialized to 0");
 
     // Loop fixpoint: Compute i's possible values at loop entry
     // Initially i=0, then i+=1 each iteration, condition is i<10
@@ -64,11 +62,9 @@ fn example_array_bounds_checking() {
     let mut loop_state = interval_domain.constant("i", 0);
     let increment = NumExpr::var("i").add(NumExpr::constant(1));
     loop_state = interval_domain.assign(&loop_state, "i", &increment);
-    println!("  Engine computed: i ∈ {}", loop_state.get("i"));
-    if let Some((low, high)) = interval_domain.get_bounds(&loop_state, "i") {
-        assert_eq!(low, 1, "After i = i+1 from 0, should get 1");
-        assert_eq!(high, 1, "After i = i+1 from 0, should get 1");
-    }
+    let i_after_incr = loop_state.get("i");
+    println!("  Engine computed: i ∈ {}", i_after_incr);
+    assert_eq!(i_after_incr, Interval::constant(1), "After i = i+1 from 0, should get 1");
 
     // Loop invariant: i ∈ [0, 10] (over-approximation valid for all iterations)
     println!("\n  Invariant: i ∈ [0, 10] (before/during/after loop)");
@@ -78,26 +74,28 @@ fn example_array_bounds_checking() {
     println!("\nInside loop body (after condition i < 10 passes):");
     let cond_lt = NumExpr::var("i").lt(NumExpr::constant(10));
     let inside_loop = interval_domain.assume(&invariant, &cond_lt);
-    if let Some((low, high)) = interval_domain.get_bounds(&inside_loop, "i") {
-        println!("  Engine refined i ∈ [{}, {}] (via i < 10)", low, high);
-        assert_eq!(low, 0, "Inside loop: i >= 0");
-        assert_eq!(high, 9, "Inside loop: i < 10 means i <= 9");
-
-        // Check array access
+    let inside_i = inside_loop.get("i");
+    println!("  Engine refined i ∈ {} (via i < 10)", inside_i);
+    assert_eq!(
+        inside_i,
+        Interval::new(Bound::Finite(0), Bound::Finite(9)),
+        "Inside loop: i should be [0, 9]"
+    );
+    // Check array access
+    if let (Bound::Finite(low), Bound::Finite(high)) = (inside_i.low, inside_i.high) {
         assert!(low >= 0 && high < array_size);
-        println!("  ✓ Array access arr[i] is SAFE");
     }
+    println!("  ✓ Array access arr[i] is SAFE");
 
     // After loop: condition fails, so i ≥ 10
     println!("\nAfter loop (when i < 10 becomes false):");
     let cond_ge = NumExpr::var("i").ge(NumExpr::constant(10));
     let after_loop = interval_domain.assume(&invariant, &cond_ge);
-    if let Some((low, high)) = interval_domain.get_bounds(&after_loop, "i") {
-        println!("  Engine refined i ∈ [{}, {}] (via i ≥ 10)", low, high);
-        assert_eq!(low, 10, "After loop: i >= 10");
-        assert_eq!(high, 10, "After loop: i = 10 (first value where i < 10 fails)");
-
-        // Check array access
+    let after_i = after_loop.get("i");
+    println!("  Engine refined i ∈ {} (via i ≥ 10)", after_i);
+    assert_eq!(after_i, Interval::constant(10), "After loop: i should be exactly 10");
+    // Check array access
+    if let (Bound::Finite(low), _) = (after_i.low, after_i.high) {
         assert!(low >= array_size);
         println!("  ✗ Array access arr[i] is UNSAFE (i={} >= {})", low, array_size);
     }
@@ -223,11 +221,13 @@ fn example_combined_analysis() {
     // Loop condition: i < 10, so i ∈ [0, 9]
     println!("\nLoop body (i ranges from 0 to 9):");
     let loop_i_state = interval_domain.interval("i", 0, 9);
-    if let Some((low, high)) = interval_domain.get_bounds(&loop_i_state, "i") {
-        println!("  i ∈ [{}, {}]", low, high);
-        assert_eq!(low, 0, "Loop variable starts at 0");
-        assert_eq!(high, 9, "Loop condition i < 10 means i <= 9");
-    }
+    let loop_i = loop_i_state.get("i");
+    println!("  i ∈ {}", loop_i);
+    assert_eq!(
+        loop_i,
+        Interval::new(Bound::Finite(0), Bound::Finite(9)),
+        "Loop variable should be [0, 9]"
+    );
 
     // Compute sum bounds after all iterations: sum = 0+1+2+...+9 = 45
     println!("\nLoop invariant: sum accumulates i values");
@@ -245,22 +245,18 @@ fn example_combined_analysis() {
     }
 
     println!("\nAfter loop (engine computed all iterations):");
-    if let Some((low, high)) = interval_domain.get_bounds(&loop_sum, "sum") {
-        println!("  Interval: sum ∈ [{}, {}]", low, high);
-
-        // Verify engine computed the correct result
-        // After all iterations: sum = 0+1+2+...+9 = 45
-        assert_eq!(low, 45, "Sum of 0+1+2+...+9 should be 45");
-        assert_eq!(high, 45, "Final sum is exactly 45 (deterministic computation)");
-
-        // Update other domains based on computed interval
-        let sign_refined = sign_domain.assume(&sign_state, &NumExpr::var("sum").ge(NumExpr::constant(0)));
-        println!("  Sign: sum = {:?}", sign_refined.get("sum"));
-        println!("\n✓ Engine computed exact result:");
-        println!("  - Interval maintains precise bounds [0, 45]");
-        println!("  - Sign confirms sum is non-negative");
-        println!("  - Constant domain loses precision (sum depends on loop)");
-    }
+    let final_sum = loop_sum.get("sum");
+    println!("  Interval: sum ∈ {}", final_sum);
+    // Verify engine computed the correct result
+    // After all iterations: sum = 0+1+2+...+9 = 45
+    assert_eq!(final_sum, Interval::constant(45), "Sum of 0+1+2+...+9 should be exactly 45");
+    // Update other domains based on computed interval
+    let sign_refined = sign_domain.assume(&sign_state, &NumExpr::var("sum").ge(NumExpr::constant(0)));
+    println!("  Sign: sum = {:?}", sign_refined.get("sum"));
+    println!("\n✓ Engine computed exact result:");
+    println!("  - Interval maintains precise bounds [45, 45]");
+    println!("  - Sign confirms sum is non-negative");
+    println!("  - Constant domain loses precision (sum depends on loop)");
 
     println!("\n");
 }
@@ -288,11 +284,13 @@ fn example_reduced_product() {
     assert_eq!(sign_state.get("x"), Sign::Top, "x ∈ [-10,10] includes both positive and negative");
     println!("  Constant: x = {:?}", const_state.get("x"));
     assert_eq!(const_state.get("x"), ConstValue::Top, "x is not a constant initially");
-    if let Some((low, high)) = interval_domain.get_bounds(&interval_state, "x") {
-        println!("  Interval: x ∈ [{}, {}]", low, high);
-        assert_eq!(low, -10);
-        assert_eq!(high, 10);
-    }
+    let x_interval = interval_state.get("x");
+    println!("  Interval: x ∈ {}", x_interval);
+    assert_eq!(
+        x_interval,
+        Interval::new(Bound::Finite(-10), Bound::Finite(10)),
+        "x interval should be [-10, 10]"
+    );
 
     // Assume x > 0
     let pred = NumExpr::var("x").gt(NumExpr::constant(0));
@@ -303,11 +301,13 @@ fn example_reduced_product() {
     println!("\nAfter x > 0:");
     println!("  Sign: x = {:?}", sign_state.get("x"));
     assert_ne!(sign_state.get("x"), Sign::Neg, "x > 0 means x is not negative");
-    if let Some((low, high)) = interval_domain.get_bounds(&interval_state, "x") {
-        println!("  Interval: x ∈ [{}, {}]", low, high);
-        assert!(low > 0, "x > 0 means minimum is > 0");
-        assert!(high <= 10, "x still bounded by initial interval");
-    }
+    let x_after_gt0 = interval_state.get("x");
+    println!("  Interval: x ∈ {}", x_after_gt0);
+    assert_eq!(
+        x_after_gt0,
+        Interval::new(Bound::Finite(1), Bound::Finite(10)),
+        "x > 0 should refine to [1, 10]"
+    );
 
     // Assume x == 5
     let pred = NumExpr::var("x").eq(NumExpr::constant(5));
@@ -320,11 +320,9 @@ fn example_reduced_product() {
     assert_eq!(sign_state.get("x"), Sign::Pos, "x = 5 is positive");
     println!("  Constant: x = {:?}", const_state.get("x"));
     assert_eq!(const_state.get("x"), ConstValue::Const(5), "x must be exactly 5");
-    if let Some((low, high)) = interval_domain.get_bounds(&interval_state, "x") {
-        println!("  Interval: x ∈ [{}, {}]", low, high);
-        assert_eq!(low, 5, "Interval refined to exactly 5");
-        assert_eq!(high, 5, "Interval refined to exactly 5");
-    }
+    let x_final = interval_state.get("x");
+    println!("  Interval: x ∈ {}", x_final);
+    assert_eq!(x_final, Interval::constant(5), "Interval refined to exactly 5");
 
     assert_eq!(const_state.get("x"), ConstValue::Const(5));
     println!("\n✓ All domains agree: x = 5");

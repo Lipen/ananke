@@ -130,9 +130,9 @@ fn example_nested_conditionals(domain: &IntervalDomain, transfer: &NumericTransf
     };
 
     let prog = Stmt::if_stmt(
-        NumExpr::var("x").ge(NumExpr::constant(0)),
+        NumExpr::var("x").lt(NumExpr::constant(50)),
         Stmt::if_stmt(
-            NumExpr::var("y").le(NumExpr::constant(5)),
+            NumExpr::var("x").lt(NumExpr::constant(25)),
             Stmt::assign("y", NumExpr::constant(0)),
             Stmt::assign("y", NumExpr::constant(1)),
         ),
