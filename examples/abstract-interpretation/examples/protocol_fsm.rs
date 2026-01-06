@@ -64,16 +64,16 @@ fn analyze_path_insensitive() {
     let domain = IntervalDomain;
 
     // INIT state: seq_num=0, data_size=0
-    let init_state = domain.interval(&"data_size".to_string(), 0, 0);
+    let init_state = domain.interval("data_size", 0, 0);
 
     // READY state: seq_num ∈ [0,255], data_size=0
-    let ready_state = domain.interval(&"data_size".to_string(), 0, 0);
+    let ready_state = domain.interval("data_size", 0, 0);
 
     // DATA state: seq_num ∈ [0,255], data_size ∈ [1,1500]
-    let data_state = domain.interval(&"data_size".to_string(), 1, 1500);
+    let data_state = domain.interval("data_size", 1, 1500);
 
     // ACK state: seq_num ∈ [0,255], data_size=0
-    let ack_state = domain.interval(&"data_size".to_string(), 0, 0);
+    let ack_state = domain.interval("data_size", 0, 0);
 
     // Join all states (path-insensitive)
     let mut merged = init_state;
@@ -89,7 +89,7 @@ fn analyze_path_insensitive() {
 
     println!();
     println!("After merging all states:");
-    if let Some((low, high)) = domain.get_bounds(&merged, &"data_size".to_string()) {
+    if let Some((low, high)) = domain.get_bounds(&merged, "data_size") {
         println!("  data_size ∈ [{}, {}]", low, high);
     }
 
@@ -146,10 +146,10 @@ fn analyze_path_sensitive() {
     let ctrl_ack = control_domain.and(&ctrl_ack, &control_domain.mk_var_true("state_bit0"));
 
     // Create numeric states with precise data_size bounds
-    let num_init = numeric_domain.interval(&"data_size".to_string(), 0, 0);
-    let num_ready = numeric_domain.interval(&"data_size".to_string(), 0, 0);
-    let num_data = numeric_domain.interval(&"data_size".to_string(), 1, 1500);
-    let num_ack = numeric_domain.interval(&"data_size".to_string(), 0, 0);
+    let num_init = numeric_domain.interval("data_size", 0, 0);
+    let num_ready = numeric_domain.interval("data_size", 0, 0);
+    let num_data = numeric_domain.interval("data_size", 1, 1500);
+    let num_ack = numeric_domain.interval("data_size", 0, 0);
 
     // Create control-sensitive elements
     let state_init = product.mk_single_partition(ctrl_init.clone(), num_init);
@@ -181,7 +181,7 @@ fn analyze_path_sensitive() {
 
     // INIT: data_size = 0
     if let Some(num_state) = all_states.get(&ctrl_init) {
-        if let Some((low, high)) = numeric_domain.get_bounds(num_state, &"data_size".to_string()) {
+        if let Some((low, high)) = numeric_domain.get_bounds(num_state, "data_size") {
             assert_eq!((low, high), (0, 0), "INIT state: data_size should be 0");
             println!("  INIT partition:  data_size ∈ [{}, {}]", low, high);
         }
@@ -191,7 +191,7 @@ fn analyze_path_sensitive() {
 
     // READY: data_size = 0
     if let Some(num_state) = all_states.get(&ctrl_ready) {
-        if let Some((low, high)) = numeric_domain.get_bounds(num_state, &"data_size".to_string()) {
+        if let Some((low, high)) = numeric_domain.get_bounds(num_state, "data_size") {
             assert_eq!((low, high), (0, 0), "READY state: data_size should be 0");
             println!("  READY partition: data_size ∈ [{}, {}]", low, high);
         }
@@ -201,7 +201,7 @@ fn analyze_path_sensitive() {
 
     // DATA: data_size ∈ [1, 1500]
     if let Some(num_state) = all_states.get(&ctrl_data) {
-        if let Some((low, high)) = numeric_domain.get_bounds(num_state, &"data_size".to_string()) {
+        if let Some((low, high)) = numeric_domain.get_bounds(num_state, "data_size") {
             assert_eq!((low, high), (1, 1500), "DATA state: data_size should be [1,1500]");
             println!("  DATA partition:  data_size ∈ [{}, {}]", low, high);
         }
@@ -211,7 +211,7 @@ fn analyze_path_sensitive() {
 
     // ACK: data_size = 0
     if let Some(num_state) = all_states.get(&ctrl_ack) {
-        if let Some((low, high)) = numeric_domain.get_bounds(num_state, &"data_size".to_string()) {
+        if let Some((low, high)) = numeric_domain.get_bounds(num_state, "data_size") {
             assert_eq!((low, high), (0, 0), "ACK state: data_size should be 0");
             println!("  ACK partition:   data_size ∈ [{}, {}]", low, high);
         }

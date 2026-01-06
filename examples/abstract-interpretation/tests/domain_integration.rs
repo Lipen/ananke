@@ -9,8 +9,8 @@ fn test_sign_constant_cooperation() {
     let const_domain = ConstantDomain;
 
     // Start with x = 5
-    let sign_elem = sign_domain.constant(&"x".to_string(), 5);
-    let const_elem = const_domain.constant(&"x".to_string(), 5);
+    let sign_elem = sign_domain.constant("x", 5);
+    let const_elem = const_domain.constant("x", 5);
 
     // Sign knows it's positive
     assert_eq!(sign_elem.get("x"), Sign::Pos);
@@ -22,8 +22,8 @@ fn test_sign_constant_cooperation() {
     use NumExpr::*;
     let expr = Add(Box::new(Var("x".to_string())), Box::new(Const(10)));
 
-    let sign_result = sign_domain.assign(&sign_elem, &"y".to_string(), &expr);
-    let const_result = const_domain.assign(&const_elem, &"y".to_string(), &expr);
+    let sign_result = sign_domain.assign(&sign_elem, "y", &expr);
+    let const_result = const_domain.assign(&const_elem, "y", &expr);
 
     // Sign: positive + positive = positive (strictly)
     assert_eq!(sign_result.get("y"), Sign::Pos);
@@ -39,14 +39,14 @@ fn test_sign_interval_cooperation() {
     let interval_domain = IntervalDomain;
 
     // x in [1, 100]
-    let sign_elem = sign_domain.interval(&"x".to_string(), 1, 100);
-    let interval_elem = interval_domain.interval(&"x".to_string(), 1, 100);
+    let sign_elem = sign_domain.interval("x", 1, 100);
+    let interval_elem = interval_domain.interval("x", 1, 100);
 
     // Sign: all positive (since low > 0)
     assert_eq!(sign_elem.get("x"), Sign::Pos);
 
     // Interval: precise bounds
-    if let Some((low, high)) = interval_domain.get_bounds(&interval_elem, &"x".to_string()) {
+    if let Some((low, high)) = interval_domain.get_bounds(&interval_elem, "x") {
         assert_eq!(low, 1);
         assert_eq!(high, 100);
     } else {
@@ -61,16 +61,16 @@ fn test_constant_interval_refinement() {
     let interval_domain = IntervalDomain;
 
     // Start with x = 5
-    let const_elem = const_domain.constant(&"x".to_string(), 5);
-    let interval_elem = interval_domain.constant(&"x".to_string(), 5);
+    let const_elem = const_domain.constant("x", 5);
+    let interval_elem = interval_domain.constant("x", 5);
 
     // Both agree on singleton
     assert_eq!(const_elem.get("x"), ConstValue::Const(5));
-    assert_eq!(interval_domain.get_bounds(&interval_elem, &"x".to_string()), Some((5, 5)));
+    assert_eq!(interval_domain.get_bounds(&interval_elem, "x"), Some((5, 5)));
 
     // After join with x in [10, 20]
-    let const_elem2 = const_domain.constant(&"x".to_string(), 15);
-    let interval_elem2 = interval_domain.interval(&"x".to_string(), 10, 20);
+    let const_elem2 = const_domain.constant("x", 15);
+    let interval_elem2 = interval_domain.interval("x", 10, 20);
 
     let const_joined = const_domain.join(&const_elem, &const_elem2);
     let interval_joined = interval_domain.join(&interval_elem, &interval_elem2);
@@ -79,7 +79,7 @@ fn test_constant_interval_refinement() {
     assert_eq!(const_joined.get("x"), ConstValue::Top);
 
     // Interval maintains bounds [5, 20]
-    assert_eq!(interval_domain.get_bounds(&interval_joined, &"x".to_string()), Some((5, 20)));
+    assert_eq!(interval_domain.get_bounds(&interval_joined, "x"), Some((5, 20)));
 }
 
 #[test]
@@ -90,27 +90,27 @@ fn test_triple_domain_analysis() {
     let interval_domain = IntervalDomain;
 
     // Program: x = 7; y = x; z = y;
-    let sign = sign_domain.constant(&"x".to_string(), 7);
-    let constant = const_domain.constant(&"x".to_string(), 7);
-    let interval = interval_domain.constant(&"x".to_string(), 7);
+    let sign = sign_domain.constant("x", 7);
+    let constant = const_domain.constant("x", 7);
+    let interval = interval_domain.constant("x", 7);
 
     use NumExpr::*;
     let expr = Var("x".to_string());
 
-    let sign = sign_domain.assign(&sign, &"y".to_string(), &expr);
-    let constant = const_domain.assign(&constant, &"y".to_string(), &expr);
-    let interval = interval_domain.assign(&interval, &"y".to_string(), &expr);
+    let sign = sign_domain.assign(&sign, "y", &expr);
+    let constant = const_domain.assign(&constant, "y", &expr);
+    let interval = interval_domain.assign(&interval, "y", &expr);
 
     let expr = Var("y".to_string());
 
-    let sign = sign_domain.assign(&sign, &"z".to_string(), &expr);
-    let constant = const_domain.assign(&constant, &"z".to_string(), &expr);
-    let interval = interval_domain.assign(&interval, &"z".to_string(), &expr);
+    let sign = sign_domain.assign(&sign, "z", &expr);
+    let constant = const_domain.assign(&constant, "z", &expr);
+    let interval = interval_domain.assign(&interval, "z", &expr);
 
     // All domains agree: z = 7
     assert_eq!(sign.get("z"), Sign::Pos);
     assert_eq!(constant.get("z"), ConstValue::Const(7));
-    assert_eq!(interval_domain.get_bounds(&interval, &"z".to_string()), Some((7, 7)));
+    assert_eq!(interval_domain.get_bounds(&interval, "z"), Some((7, 7)));
 }
 
 #[test]
@@ -158,21 +158,21 @@ fn test_domain_precision_comparison() {
     let interval_domain = IntervalDomain;
 
     // x = 5, y = 10
-    let sign = sign_domain.constant(&"x".to_string(), 5);
-    let sign = sign_domain.assign(&sign, &"y".to_string(), &NumExpr::constant(10));
+    let sign = sign_domain.constant("x", 5);
+    let sign = sign_domain.assign(&sign, "y", &NumExpr::constant(10));
 
-    let constant = const_domain.constant(&"x".to_string(), 5);
-    let constant = const_domain.assign(&constant, &"y".to_string(), &NumExpr::constant(10));
+    let constant = const_domain.constant("x", 5);
+    let constant = const_domain.assign(&constant, "y", &NumExpr::constant(10));
 
-    let interval = interval_domain.constant(&"x".to_string(), 5);
-    let interval = interval_domain.assign(&interval, &"y".to_string(), &NumExpr::constant(10));
+    let interval = interval_domain.constant("x", 5);
+    let interval = interval_domain.assign(&interval, "y", &NumExpr::constant(10));
 
     // z = x + y
     let expr = NumExpr::var("x").add(NumExpr::var("y"));
 
-    let sign_result = sign_domain.assign(&sign, &"z".to_string(), &expr);
-    let const_result = const_domain.assign(&constant, &"z".to_string(), &expr);
-    let interval_result = interval_domain.assign(&interval, &"z".to_string(), &expr);
+    let sign_result = sign_domain.assign(&sign, "z", &expr);
+    let const_result = const_domain.assign(&constant, "z", &expr);
+    let interval_result = interval_domain.assign(&interval, "z", &expr);
 
     // Sign: positive + positive = positive (strictly)
     assert_eq!(sign_result.get("z"), Sign::Pos);
@@ -181,7 +181,7 @@ fn test_domain_precision_comparison() {
     assert_eq!(const_result.get("z"), ConstValue::Const(15));
 
     // Interval: exact value [15, 15]
-    assert_eq!(interval_domain.get_bounds(&interval_result, &"z".to_string()), Some((15, 15)));
+    assert_eq!(interval_domain.get_bounds(&interval_result, "z"), Some((15, 15)));
 
     // Constant and Interval are most precise here
 }
@@ -194,14 +194,14 @@ fn test_widening_across_domains() {
     let interval_domain = IntervalDomain;
 
     // Iteration 1: x = 0
-    let sign1 = sign_domain.constant(&"x".to_string(), 0);
-    let const1 = const_domain.constant(&"x".to_string(), 0);
-    let interval1 = interval_domain.constant(&"x".to_string(), 0);
+    let sign1 = sign_domain.constant("x", 0);
+    let const1 = const_domain.constant("x", 0);
+    let interval1 = interval_domain.constant("x", 0);
 
     // Iteration 2: x = 1
-    let sign2 = sign_domain.constant(&"x".to_string(), 1);
-    let const2 = const_domain.constant(&"x".to_string(), 1);
-    let interval2 = interval_domain.constant(&"x".to_string(), 1);
+    let sign2 = sign_domain.constant("x", 1);
+    let const2 = const_domain.constant("x", 1);
+    let interval2 = interval_domain.constant("x", 1);
 
     // Widen
     let sign_widened = sign_domain.widen(&sign1, &sign2);
@@ -216,7 +216,7 @@ fn test_widening_across_domains() {
 
     // Interval: [0,0] ∇ [1,1] -> typically [0, +∞) but implementation may vary
     // Just verify widening doesn't lose the lower bound 0
-    let bounds = interval_domain.get_bounds(&interval_widened, &"x".to_string());
+    let bounds = interval_domain.get_bounds(&interval_widened, "x");
     if let Some((low, _high)) = bounds {
         assert_eq!(low, 0, "Lower bound should be preserved");
         // Upper bound might be MAX or infinite depending on implementation
@@ -239,15 +239,15 @@ fn test_pointsto_with_numeric() {
         "p",
         &Location::Heap(1), // Represent array base as heap location
     );
-    let interval_state = interval_domain.constant(&"i".to_string(), 5);
-    let sign_state = sign_domain.constant(&"i".to_string(), 5);
+    let interval_state = interval_domain.constant("i", 5);
+    let sign_state = sign_domain.constant("i", 5);
 
     // Verify pointer points to heap
     let targets = pointsto_domain.decode_bdd(pointsto_state.get("p"));
     assert!(targets.contains(&Location::Heap(1)), "p should point to heap location");
 
     // Verify index is within bounds [0, 9]
-    if let Some((low, high)) = interval_domain.get_bounds(&interval_state, &"i".to_string()) {
+    if let Some((low, high)) = interval_domain.get_bounds(&interval_state, "i") {
         assert!(low >= 0 && high < 10, "Array access should be safe");
     }
 
@@ -258,14 +258,14 @@ fn test_pointsto_with_numeric() {
     // In a real analysis, we'd track that p+i still points to array
     println!("Array access p[i] is safe:");
     println!("  - p points to: {:?}", targets);
-    println!("  - i = {:?}", interval_domain.get_bounds(&interval_state, &"i".to_string()));
+    println!("  - i = {:?}", interval_domain.get_bounds(&interval_state, "i"));
     println!("  - sign(i) = {:?}", sign_state.get("i"));
 
     // Test with potentially unsafe access: i = 15
-    let interval_unsafe = interval_domain.constant(&"i".to_string(), 15);
-    let _sign_unsafe = sign_domain.constant(&"i".to_string(), 15);
+    let interval_unsafe = interval_domain.constant("i", 15);
+    let _sign_unsafe = sign_domain.constant("i", 15);
 
-    if let Some((_low, high)) = interval_domain.get_bounds(&interval_unsafe, &"i".to_string()) {
+    if let Some((_low, high)) = interval_domain.get_bounds(&interval_unsafe, "i") {
         if high >= 10 {
             println!("\nUnsafe array access detected: i = {} >= array size 10", high);
         }
@@ -303,7 +303,7 @@ fn test_pointsto_with_constant_offsets() {
 
     // Simulate: int *p = &x; int offset = 0;
     let mut pointsto_state = PointsToElement::new(Rc::clone(pointsto_domain.bdd()));
-    let mut const_state = const_domain.constant(&"offset".to_string(), 0);
+    let mut const_state = const_domain.constant("offset", 0);
 
     pointsto_state = pointsto_domain.assign_address(&pointsto_state, "p", &Location::Stack("x".to_string()));
 
@@ -315,7 +315,7 @@ fn test_pointsto_with_constant_offsets() {
     assert!(targets.contains(&Location::Stack("x".to_string())), "p should still point to x");
 
     // Test with non-zero offset
-    const_state = const_domain.constant(&"offset".to_string(), 4);
+    const_state = const_domain.constant("offset", 4);
     assert_eq!(const_state.get("offset"), ConstValue::Const(4), "Offset should be constant 4");
 
     // In a field-sensitive analysis, p + 4 might point to different field
@@ -335,8 +335,8 @@ fn test_combined_sign_interval_pointsto() {
     // for (i = 0; i < n; i++) { p[i] = 0; }
 
     // After loop analysis: i in [0, n-1]
-    let sign_state = sign_domain.interval(&"i".to_string(), 0, 9);
-    let interval_state = interval_domain.interval(&"i".to_string(), 0, 9);
+    let sign_state = sign_domain.interval("i", 0, 9);
+    let interval_state = interval_domain.interval("i", 0, 9);
     let mut pointsto_state = PointsToElement::new(Rc::clone(pointsto_domain.bdd()));
 
     pointsto_state = pointsto_domain.assign_address(&pointsto_state, "p", &Location::Heap(1));
@@ -344,7 +344,7 @@ fn test_combined_sign_interval_pointsto() {
     // Verify all invariants
     assert_eq!(sign_state.get("i"), Sign::NonNeg, "Index should be non-negative");
 
-    if let Some((low, high)) = interval_domain.get_bounds(&interval_state, &"i".to_string()) {
+    if let Some((low, high)) = interval_domain.get_bounds(&interval_state, "i") {
         assert!(low >= 0, "Lower bound should be non-negative");
         assert!(high < 10, "Upper bound should be less than array size");
     }

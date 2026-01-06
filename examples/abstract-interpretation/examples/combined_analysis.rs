@@ -83,7 +83,7 @@ fn example_sign_interval_cooperation() {
 
     // Initial sign
     let mut sign_elem = SignElement::new();
-    sign_elem.set("x".to_string(), Sign::Top);
+    sign_elem.set("x", Sign::Top);
     println!("Sign domain: x = {}", sign_elem.get("x"));
 
     // Assume x > 0
@@ -133,7 +133,7 @@ fn example_constant_interval_cooperation() {
 
     // Constant domain
     let mut const_elem = const_domain.constant("x", 5);
-    const_elem.set("y".to_string(), ConstValue::Top); // Unknown
+    const_elem.set("y", ConstValue::Top); // Unknown
 
     println!("Constant domain:");
     println!("  x = {}", const_elem.get("x"));
@@ -145,13 +145,13 @@ fn example_constant_interval_cooperation() {
 
     // Interval domain
     let mut interval_elem = interval_domain.interval("x", 5, 5);
-    interval_elem.set("y".to_string(), Interval::new(Bound::Finite(1), Bound::Finite(10)));
+    interval_elem.set("y", Interval::new(Bound::Finite(1), Bound::Finite(10)));
 
     println!("\nInterval domain:");
     println!("  x ∈ {}", interval_elem.get("x"));
     println!("  y ∈ {}", interval_elem.get("y"));
 
-    interval_elem = interval_domain.assign(&interval_elem, &"z".to_string(), &expr);
+    interval_elem = interval_domain.assign(&interval_elem, "z", &expr);
     println!("  z = x + y ∈ {} (maintains bounds)", interval_elem.get("z"));
     assert_eq!(const_elem.get("z"), ConstValue::Top);
     assert_eq!(interval_elem.get("z"), Interval::new(Bound::Finite(6), Bound::Finite(15)));

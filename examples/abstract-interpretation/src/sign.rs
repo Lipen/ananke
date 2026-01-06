@@ -103,6 +103,59 @@ impl fmt::Display for Sign {
 pub struct SignDomain;
 
 /// Abstract element in the sign domain (maps variables to signs).
+/// Abstract element representing sign information for all variables.
+///
+/// Maps each program variable to a sign value representing the possible signs
+/// of its values at a specific program point. This is the main data structure for
+/// flow-sensitive sign analysis.
+///
+/// # Sign Values
+///
+/// Each variable can have one of:
+/// - `Pos`: Always positive (> 0)
+/// - `Neg`: Always negative (< 0)
+/// - `Zero`: Always exactly 0
+/// - `NonNeg`: Non-negative (≥20)
+/// - `NonPos`: Non-positive (≤0)
+/// - `NonZero`: Never zero (≠0)
+/// - `Top`: Unknown/unconstrained (any sign possible)
+/// - `Bottom`: Impossible (element unreachable)
+///
+/// # Representation
+///
+/// ```text
+/// SignElement {
+///     "x" → Pos,           // x is always positive
+///     "y" → NonNeg,        // y is >= 0
+///     "z" → Top,           // z's sign unknown (not in map)
+/// }
+/// ```
+///
+/// # Use Cases
+///
+/// - **Division-by-zero detection**: `assume(x != 0)` narrows sign to `NonZero`
+/// - **Multiplication analysis**: `Pos * Neg = Neg`
+/// - **Dead code detection**: Contradictory signs lead to `Bottom`
+/// - **Optimization hints**: Signs can guide compiler optimizations
+///
+/// # Lattice Structure
+///
+/// The sign lattice forms a powerset-like structure:
+///
+/// ```text
+///                     Top (⊤)  ← Unknown
+///                    /  |  \
+///                   /   |   \
+///              Pos  Neg  Zero  NonZero
+///                   \   |   /
+///                 NonPos NonNeg
+///                       |
+///                     Bottom (⊥)  ← Unreachable
+/// ```
+///
+/// - **Order** (⊑): More specific signs are more precise
+/// - **Join** (⊔): Union of possible signs (widen to Top)
+/// - **Meet** (⊓): Intersection of signs (narrow, more precise)
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct SignElement {
     /// Mapping from variables to their sign abstractions
@@ -129,6 +182,16 @@ impl SignElement {
     }
 
     /// Get the sign of a variable (returns Top if not defined).
+    ///
+    /// Returns the sign value associated with the given variable, or `Top` (unknown sign)
+    /// if the variable is not explicitly constrained.
+    ///
+    /// # Heterogeneous Lookup
+    ///
+    /// Supports zero-cost lookup with `&str`:
+    /// ```ignore
+    /// elem.get("x");  // Works: &str accepted, no allocation
+    /// ```
     pub fn get<Q>(&self, var: &Q) -> Sign
     where
         String: Borrow<Q>,
@@ -1065,13 +1128,13 @@ mod tests {
     fn test_sign_numeric_domain_constant() {
         let domain = SignDomain;
 
-        let elem = domain.constant(&"x".to_string(), 42);
+        let elem = domain.constant("x", 42);
         assert_eq!(elem.get("x"), Sign::Pos);
 
-        let elem = domain.constant(&"y".to_string(), 0);
+        let elem = domain.constant("y", 0);
         assert_eq!(elem.get("y"), Sign::Zero);
 
-        let elem = domain.constant(&"z".to_string(), -10);
+        let elem = domain.constant("z", -10);
         assert_eq!(elem.get("z"), Sign::Neg);
     }
 
@@ -1079,25 +1142,25 @@ mod tests {
     fn test_sign_numeric_domain_interval() {
         let domain = SignDomain;
 
-        let elem = domain.interval(&"x".to_string(), 1, 100);
+        let elem = domain.interval("x", 1, 100);
         assert_eq!(elem.get("x"), Sign::Pos);
 
-        let elem = domain.interval(&"x".to_string(), -50, -1);
+        let elem = domain.interval("x", -50, -1);
         assert_eq!(elem.get("x"), Sign::Neg);
 
-        let elem = domain.interval(&"x".to_string(), -10, 10);
+        let elem = domain.interval("x", -10, 10);
         assert_eq!(elem.get("x"), Sign::Top);
 
-        let elem = domain.interval(&"x".to_string(), 0, 0);
+        let elem = domain.interval("x", 0, 0);
         assert_eq!(elem.get("x"), Sign::Zero);
 
-        let elem = domain.interval(&"x".to_string(), 0, 50);
+        let elem = domain.interval("x", 0, 50);
         assert_eq!(elem.get("x"), Sign::NonNeg);
 
-        let elem = domain.interval(&"x".to_string(), -50, 0);
+        let elem = domain.interval("x", -50, 0);
         assert_eq!(elem.get("x"), Sign::NonPos);
 
-        let elem = domain.interval(&"x".to_string(), 10, 5);
+        let elem = domain.interval("x", 10, 5);
         assert_eq!(elem.get("x"), Sign::Bottom);
     }
 
@@ -1107,17 +1170,17 @@ mod tests {
         let domain = SignDomain;
 
         let mut elem = SignElement::new();
-        elem.set("x".to_string(), Sign::Pos);
-        elem.set("y".to_string(), Sign::Neg);
+        elem.set("x", Sign::Pos);
+        elem.set("y", Sign::Neg);
 
         // z := x + y
         let expr = Add(Box::new(Var("x".to_string())), Box::new(Var("y".to_string())));
-        let result = domain.assign(&elem, &"z".to_string(), &expr);
+        let result = domain.assign(&elem, "z", &expr);
         assert_eq!(result.get("z"), Sign::Top); // Pos + Neg = Top
 
         // z := x * y
         let expr = Mul(Box::new(Var("x".to_string())), Box::new(Var("y".to_string())));
-        let result = domain.assign(&elem, &"z".to_string(), &expr);
+        let result = domain.assign(&elem, "z", &expr);
         assert_eq!(result.get("z"), Sign::Neg); // Pos * Neg = Neg
     }
 
@@ -1128,7 +1191,7 @@ mod tests {
         let domain = SignDomain;
 
         let mut elem = SignElement::new();
-        elem.set("x".to_string(), Sign::Top);
+        elem.set("x", Sign::Top);
 
         // Assume x = 0
         let result = domain.assume(&elem, &Eq(Var("x".to_string()), Const(0)));
@@ -1147,25 +1210,25 @@ mod tests {
     fn test_sign_get_constant() {
         let domain = SignDomain;
 
-        let elem = domain.constant(&"x".to_string(), 0);
-        assert_eq!(domain.get_constant(&elem, &"x".to_string()), Some(0));
+        let elem = domain.constant("x", 0);
+        assert_eq!(domain.get_constant(&elem, "x"), Some(0));
 
-        let elem = domain.constant(&"x".to_string(), 42);
-        assert_eq!(domain.get_constant(&elem, &"x".to_string()), None);
+        let elem = domain.constant("x", 42);
+        assert_eq!(domain.get_constant(&elem, "x"), None);
     }
 
     #[test]
     fn test_sign_get_bounds() {
         let domain = SignDomain;
 
-        let elem = domain.constant(&"x".to_string(), 0);
-        assert_eq!(domain.get_bounds(&elem, &"x".to_string()), Some((0, 0)));
+        let elem = domain.constant("x", 0);
+        assert_eq!(domain.get_bounds(&elem, "x"), Some((0, 0)));
 
-        let elem = domain.interval(&"x".to_string(), 1, 100);
-        assert_eq!(domain.get_bounds(&elem, &"x".to_string()), Some((1, i64::MAX)));
+        let elem = domain.interval("x", 1, 100);
+        assert_eq!(domain.get_bounds(&elem, "x"), Some((1, i64::MAX)));
 
-        let elem = domain.interval(&"x".to_string(), -50, -1);
-        assert_eq!(domain.get_bounds(&elem, &"x".to_string()), Some((i64::MIN, -1)));
+        let elem = domain.interval("x", -50, -1);
+        assert_eq!(domain.get_bounds(&elem, "x"), Some((i64::MIN, -1)));
     }
 
     #[test]
@@ -1173,10 +1236,10 @@ mod tests {
         let domain = SignDomain;
 
         let mut elem = SignElement::new();
-        elem.set("x".to_string(), Sign::Pos);
-        elem.set("y".to_string(), Sign::Neg);
+        elem.set("x", Sign::Pos);
+        elem.set("y", Sign::Neg);
 
-        let result = domain.project(&elem, &"x".to_string());
+        let result = domain.project(&elem, "x");
         assert_eq!(result.get("x"), Sign::Top); // x no longer constrained
         assert_eq!(result.get("y"), Sign::Neg); // y unchanged
     }
@@ -1187,23 +1250,23 @@ mod tests {
         let domain = SignDomain;
 
         let mut elem = SignElement::new();
-        elem.set("x".to_string(), Sign::Top);
+        elem.set("x", Sign::Top);
 
         // x * x should always be non-negative
         let expr = NumExpr::var("x").mul(NumExpr::var("x"));
 
-        let result = domain.assign(&elem, &"temp".to_string(), &expr);
+        let result = domain.assign(&elem, "temp", &expr);
         assert_eq!(result.get("temp"), Sign::NonNeg);
 
         // Test with different signs
-        elem.set("y".to_string(), Sign::Neg);
+        elem.set("y", Sign::Neg);
         let expr = NumExpr::var("y").mul(NumExpr::var("y"));
-        let result = domain.assign(&elem, &"temp".to_string(), &expr);
+        let result = domain.assign(&elem, "temp", &expr);
         assert_eq!(result.get("temp"), Sign::Pos);
 
-        elem.set("z".to_string(), Sign::Pos);
+        elem.set("z", Sign::Pos);
         let expr = NumExpr::var("z").mul(NumExpr::var("z"));
-        let result = domain.assign(&elem, &"temp".to_string(), &expr);
+        let result = domain.assign(&elem, "temp", &expr);
         assert_eq!(result.get("temp"), Sign::Pos);
     }
 
@@ -1213,7 +1276,7 @@ mod tests {
         let domain = SignDomain;
 
         let mut elem = SignElement::new();
-        elem.set("x".to_string(), Sign::Top);
+        elem.set("x", Sign::Top);
 
         // After x > 0, division is safe
         let pred = NumExpr::var("x").gt(NumExpr::constant(0));
@@ -1233,21 +1296,21 @@ mod tests {
         let domain = SignDomain;
 
         // i = 0
-        let mut elem = domain.constant(&"i".to_string(), 0);
+        let mut elem = domain.constant("i", 0);
         assert_eq!(elem.get("i"), Sign::Zero);
 
         // i = i + 1 (first iteration: 0 + 1 = 1, which is Pos)
         let expr = NumExpr::var("i").add(NumExpr::constant(1));
-        elem = domain.assign(&elem, &"i".to_string(), &expr);
+        elem = domain.assign(&elem, "i", &expr);
         assert_eq!(elem.get("i"), Sign::Pos);
 
         // Join with 0 to simulate loop: Zero ⊔ Pos = NonNeg
-        let elem0 = domain.constant(&"i".to_string(), 0);
+        let elem0 = domain.constant("i", 0);
         elem = domain.join(&elem0, &elem);
         assert_eq!(elem.get("i"), Sign::NonNeg);
 
         // Fixed point: NonNeg + 1 = NonNeg
-        let elem2 = domain.assign(&elem, &"i".to_string(), &expr);
+        let elem2 = domain.assign(&elem, "i", &expr);
         assert_eq!(elem2.get("i"), Sign::NonNeg);
         assert!(domain.le(&elem, &elem2));
     }

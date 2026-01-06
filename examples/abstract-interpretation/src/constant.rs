@@ -169,7 +169,51 @@ impl fmt::Display for ConstValue {
 #[derive(Debug, Clone)]
 pub struct ConstantDomain;
 
-/// Abstract element in the constant domain (maps variables to constant values).
+/// Abstract element representing constant propagation information for all variables.
+///
+/// Maps each program variable to a constant value abstraction representing what we know
+/// about its value at a specific program point. This is the main data structure for
+/// flow-sensitive constant propagation analysis.
+///
+/// # Constant Values
+///
+/// Each variable can have one of:
+/// - `Const(i64)`: Definitely has this exact value
+/// - `Top`: Unknown/unconstrained (could be any value)
+/// - `Bottom`: Impossible (element unreachable)
+///
+/// # Representation
+///
+/// ```text
+/// ConstantElement {
+///     "x" → Const(42),    // x is definitely 42
+///     "y" → Const(10),    // y is definitely 10
+///     "z" → Top,         // z's value unknown (not in map)
+/// }
+/// ```
+///
+/// # Use Cases
+///
+/// - **Compile-time evaluation**: `x = 5; y = x + 3;` → can evaluate to `y = Const(8)`
+/// - **Dead code elimination**: Determine which branches are always taken
+/// - **Optimization**: Replace variables with their known constant values
+/// - **Verification**: Check if invariants hold with exact values
+///
+/// # Lattice Structure
+///
+/// The constant domain forms a simple powerset-like lattice:
+///
+/// ```text
+///          Top (⊤)  ← Unknown value
+///         /   |   \
+///     Const(-1) Const(0) Const(1) ...  ← Specific constants
+///         \   |   /
+///       Bottom (⊥)  ← Unreachable
+/// ```
+///
+/// - **Order** (⊑): `Const(c) ⊑ Top` (specific is more precise than unknown)
+/// - **Join** (⊔): Different constants join to `Top` (lose precision)
+/// - **Meet** (⊓): Same constant meets to itself; different constants meet to `Bottom`
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct ConstantElement {
     /// Mapping from variables to their constant value abstractions

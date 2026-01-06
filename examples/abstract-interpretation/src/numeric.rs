@@ -95,7 +95,7 @@ mod tests {
     fn test_numeric_domain_assign() {
         let domain = IntervalDomain;
         let mut elem = IntervalElement::new();
-        elem.set("x".to_string(), Interval::constant(5));
+        elem.set("x", Interval::constant(5));
 
         // y := x + 10
         let expr = NumExpr::var("x").add(NumExpr::constant(10));
@@ -109,8 +109,8 @@ mod tests {
     fn test_numeric_domain_assign_complex() {
         let domain = IntervalDomain;
         let mut elem = IntervalElement::new();
-        elem.set("x".to_string(), Interval::new(Bound::Finite(0), Bound::Finite(10)));
-        elem.set("y".to_string(), Interval::new(Bound::Finite(5), Bound::Finite(15)));
+        elem.set("x", Interval::new(Bound::Finite(0), Bound::Finite(10)));
+        elem.set("y", Interval::new(Bound::Finite(5), Bound::Finite(15)));
 
         // z := x + y
         let expr = NumExpr::var("x").add(NumExpr::var("y"));
@@ -147,8 +147,8 @@ mod tests {
     fn test_numeric_domain_project() {
         let domain = IntervalDomain;
         let mut elem = IntervalElement::new();
-        elem.set("x".to_string(), Interval::constant(5));
-        elem.set("y".to_string(), Interval::constant(10));
+        elem.set("x", Interval::constant(5));
+        elem.set("y", Interval::constant(10));
 
         let projected = domain.project(&elem, "x");
 
@@ -178,7 +178,7 @@ mod tests {
     fn test_numeric_domain_arithmetic_precision() {
         let domain = IntervalDomain;
         let mut elem = IntervalElement::new();
-        elem.set("x".to_string(), Interval::new(Bound::Finite(1), Bound::Finite(2)));
+        elem.set("x", Interval::new(Bound::Finite(1), Bound::Finite(2)));
 
         // y := x * x (should be [1, 4])
         let expr = NumExpr::var("x").mul(NumExpr::var("x"));

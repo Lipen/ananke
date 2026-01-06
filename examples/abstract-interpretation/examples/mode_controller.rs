@@ -74,16 +74,16 @@ fn analyze_path_insensitive() {
     // In path-insensitive analysis, we lose track of which mode we're in
 
     // INIT state: mode=0, actuator=0
-    let init_state = domain.interval(&"actuator".to_string(), 0, 0);
+    let init_state = domain.interval("actuator", 0, 0);
 
     // READY state: mode=1, actuator=0
-    let ready_state = domain.interval(&"actuator".to_string(), 0, 0);
+    let ready_state = domain.interval("actuator", 0, 0);
 
     // ACTIVE state: mode=2, actuator=1
-    let active_state = domain.interval(&"actuator".to_string(), 1, 1);
+    let active_state = domain.interval("actuator", 1, 1);
 
     // ERROR state: mode=3, actuator=0
-    let error_state = domain.interval(&"actuator".to_string(), 0, 0);
+    let error_state = domain.interval("actuator", 0, 0);
 
     // Join all states (path-insensitive merge)
     let mut merged = init_state;
@@ -95,7 +95,7 @@ fn analyze_path_insensitive() {
     println!("After merging all control paths:");
     println!("  mode ∈ {{INIT, READY, ACTIVE, ERROR}} (all modes possible)");
 
-    if let Some((low, high)) = domain.get_bounds(&merged, &"actuator".to_string()) {
+    if let Some((low, high)) = domain.get_bounds(&merged, "actuator") {
         println!("  actuator ∈ [{}, {}]", low, high);
     }
 
@@ -147,16 +147,16 @@ fn analyze_path_sensitive() {
 
     // Create numeric states for each mode
     // INIT: actuator=0
-    let num_init = numeric_domain.interval(&"actuator".to_string(), 0, 0);
+    let num_init = numeric_domain.interval("actuator", 0, 0);
 
     // READY: actuator=0
-    let num_ready = numeric_domain.interval(&"actuator".to_string(), 0, 0);
+    let num_ready = numeric_domain.interval("actuator", 0, 0);
 
     // ACTIVE: actuator=1
-    let num_active = numeric_domain.interval(&"actuator".to_string(), 1, 1);
+    let num_active = numeric_domain.interval("actuator", 1, 1);
 
     // ERROR: actuator=0
-    let num_error = numeric_domain.interval(&"actuator".to_string(), 0, 0);
+    let num_error = numeric_domain.interval("actuator", 0, 0);
 
     // Create control-sensitive elements for each mode
     let state_init = product.mk_single_partition(ctrl_init.clone(), num_init);
@@ -192,7 +192,7 @@ fn analyze_path_sensitive() {
     // Verify each mode has the correct actuator bounds
     // INIT: actuator = 0
     if let Some(num_state) = all_states.get(&ctrl_init) {
-        if let Some((low, high)) = numeric_domain.get_bounds(num_state, &"actuator".to_string()) {
+        if let Some((low, high)) = numeric_domain.get_bounds(num_state, "actuator") {
             assert_eq!((low, high), (0, 0), "INIT mode: actuator should be [0,0]");
             println!("✅ P2: In INIT mode: actuator = 0");
         }
@@ -202,7 +202,7 @@ fn analyze_path_sensitive() {
 
     // READY: actuator = 0
     if let Some(num_state) = all_states.get(&ctrl_ready) {
-        if let Some((low, high)) = numeric_domain.get_bounds(num_state, &"actuator".to_string()) {
+        if let Some((low, high)) = numeric_domain.get_bounds(num_state, "actuator") {
             assert_eq!((low, high), (0, 0), "READY mode: actuator should be [0,0]");
             println!("✅ P2: In READY mode: actuator = 0");
         }
@@ -212,7 +212,7 @@ fn analyze_path_sensitive() {
 
     // ACTIVE: actuator = 1
     if let Some(num_state) = all_states.get(&ctrl_active) {
-        if let Some((low, high)) = numeric_domain.get_bounds(num_state, &"actuator".to_string()) {
+        if let Some((low, high)) = numeric_domain.get_bounds(num_state, "actuator") {
             assert_eq!((low, high), (1, 1), "ACTIVE mode: actuator should be [1,1]");
             println!("✅ P4: In ACTIVE mode: actuator = 1 (only mode where actuator can be 1)");
         }
@@ -222,7 +222,7 @@ fn analyze_path_sensitive() {
 
     // ERROR: actuator = 0
     if let Some(num_state) = all_states.get(&ctrl_error) {
-        if let Some((low, high)) = numeric_domain.get_bounds(num_state, &"actuator".to_string()) {
+        if let Some((low, high)) = numeric_domain.get_bounds(num_state, "actuator") {
             assert_eq!((low, high), (0, 0), "ERROR mode: actuator should be [0,0]");
             println!("✅ P3: In ERROR mode: actuator = 0");
         }

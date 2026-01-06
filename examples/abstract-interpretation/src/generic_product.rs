@@ -110,10 +110,10 @@ mod tests {
 
         // Create sample elements
         let i_top = d1.top();
-        let i_const = d1.constant(&"x".to_string(), 5);
+        let i_const = d1.constant("x", 5);
 
         let s_top = d2.top();
-        let s_pos = d2.constant(&"x".to_string(), 5);
+        let s_pos = d2.constant("x", 5);
 
         let samples = vec![
             product.bottom(),

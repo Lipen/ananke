@@ -79,7 +79,7 @@ fn example_conditional_branch(domain: &IntervalDomain, transfer: &NumericTransfe
 
     let init = {
         let mut elem = IntervalElement::new();
-        elem.set("x".to_string(), Interval::new(Bound::Finite(-10), Bound::Finite(10)));
+        elem.set("x", Interval::new(Bound::Finite(-10), Bound::Finite(10)));
         elem
     };
 
@@ -125,7 +125,7 @@ fn example_nested_conditionals(domain: &IntervalDomain, transfer: &NumericTransf
 
     let init = {
         let mut elem = IntervalElement::new();
-        elem.set("x".to_string(), Interval::new(Bound::Finite(0), Bound::Finite(100)));
+        elem.set("x", Interval::new(Bound::Finite(0), Bound::Finite(100)));
         elem
     };
 
@@ -169,7 +169,7 @@ fn example_assertions_and_assumptions(domain: &IntervalDomain, transfer: &Numeri
 
     let init = {
         let mut elem = IntervalElement::new();
-        elem.set("x".to_string(), Interval::new(Bound::Finite(0), Bound::Finite(100)));
+        elem.set("x", Interval::new(Bound::Finite(0), Bound::Finite(100)));
         elem
     };
 

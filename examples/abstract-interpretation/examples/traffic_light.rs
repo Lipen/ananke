@@ -54,13 +54,13 @@ fn example_path_insensitive() {
     let domain = IntervalDomain;
 
     // RED state: timer ∈ [0, 60]
-    let red_state = domain.interval(&"timer".to_string(), 0, 60);
+    let red_state = domain.interval("timer", 0, 60);
 
     // GREEN state: timer ∈ [0, 45]
-    let green_state = domain.interval(&"timer".to_string(), 0, 45);
+    let green_state = domain.interval("timer", 0, 45);
 
     // YELLOW state: timer ∈ [0, 5]
-    let yellow_state = domain.interval(&"timer".to_string(), 0, 5);
+    let yellow_state = domain.interval("timer", 0, 5);
 
     // Join all states (path-insensitive)
     let mut merged = red_state;
@@ -74,7 +74,7 @@ fn example_path_insensitive() {
 
     println!();
     println!("After merging all states:");
-    if let Some((low, high)) = domain.get_bounds(&merged, &"timer".to_string()) {
+    if let Some((low, high)) = domain.get_bounds(&merged, "timer") {
         println!("  timer ∈ [{}, {}]", low, high);
     }
 
@@ -127,9 +127,9 @@ fn example_path_sensitive() {
     let ctrl_yellow = control_domain.and(&ctrl_yellow, &control_domain.mk_var_false("state_bit0"));
 
     // Create numeric states with precise timer bounds
-    let num_red = numeric_domain.interval(&"timer".to_string(), 0, 60);
-    let num_green = numeric_domain.interval(&"timer".to_string(), 0, 45);
-    let num_yellow = numeric_domain.interval(&"timer".to_string(), 0, 5);
+    let num_red = numeric_domain.interval("timer", 0, 60);
+    let num_green = numeric_domain.interval("timer", 0, 45);
+    let num_yellow = numeric_domain.interval("timer", 0, 5);
 
     // Create control-sensitive elements
     let state_red = product.mk_single_partition(ctrl_red.clone(), num_red);
@@ -157,7 +157,7 @@ fn example_path_sensitive() {
 
     // RED: timer ∈ [0, 60]
     if let Some(num_state) = all_states.get(&ctrl_red) {
-        if let Some((low, high)) = numeric_domain.get_bounds(num_state, &"timer".to_string()) {
+        if let Some((low, high)) = numeric_domain.get_bounds(num_state, "timer") {
             assert_eq!((low, high), (0, 60), "RED state: timer should be [0,60]");
             println!("  RED partition:    timer ∈ [{}, {}]", low, high);
         }
@@ -167,7 +167,7 @@ fn example_path_sensitive() {
 
     // GREEN: timer ∈ [0, 45]
     if let Some(num_state) = all_states.get(&ctrl_green) {
-        if let Some((low, high)) = numeric_domain.get_bounds(num_state, &"timer".to_string()) {
+        if let Some((low, high)) = numeric_domain.get_bounds(num_state, "timer") {
             assert_eq!((low, high), (0, 45), "GREEN state: timer should be [0,45]");
             println!("  GREEN partition:  timer ∈ [{}, {}]", low, high);
         }
@@ -177,7 +177,7 @@ fn example_path_sensitive() {
 
     // YELLOW: timer ∈ [0, 5]
     if let Some(num_state) = all_states.get(&ctrl_yellow) {
-        if let Some((low, high)) = numeric_domain.get_bounds(num_state, &"timer".to_string()) {
+        if let Some((low, high)) = numeric_domain.get_bounds(num_state, "timer") {
             assert_eq!((low, high), (0, 5), "YELLOW state: timer should be [0,5]");
             println!("  YELLOW partition: timer ∈ [{}, {}]", low, high);
         }

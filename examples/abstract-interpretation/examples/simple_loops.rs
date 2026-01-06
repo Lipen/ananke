@@ -53,7 +53,7 @@ fn example_counter_loop(domain: &IntervalDomain, engine: &FixpointEngine<Interva
     // This is the starting point for fixpoint computation: lfp(λX. init ⊔ f(X))
     let init1 = {
         let mut elem = IntervalElement::new();
-        elem.set("x".to_string(), Interval::constant(0));
+        elem.set("x", Interval::constant(0));
         elem
     };
 
@@ -71,7 +71,7 @@ fn example_counter_loop(domain: &IntervalDomain, engine: &FixpointEngine<Interva
         let incremented = Interval::new(x_int.low.add(&Bound::Finite(1)), x_int.high.add(&Bound::Finite(1)));
 
         let mut result = elem.clone();
-        result.set("x".to_string(), incremented);
+        result.set("x", incremented);
 
         // Step 2: Assume loop condition x < 10 holds (refines the state)
         let refined = domain.assume(&result, &NumExpr::var("x").lt(NumExpr::constant(10)));
@@ -131,7 +131,7 @@ fn example_countdown(domain: &IntervalDomain, engine: &FixpointEngine<IntervalDo
     // init2: Initial state with x = 100
     let init2 = {
         let mut elem = IntervalElement::new();
-        elem.set("x".to_string(), Interval::constant(100));
+        elem.set("x", Interval::constant(100));
         elem
     };
 
@@ -144,7 +144,7 @@ fn example_countdown(domain: &IntervalDomain, engine: &FixpointEngine<IntervalDo
         let decremented = Interval::new(x_int.low.sub(&Bound::Finite(1)), x_int.high.sub(&Bound::Finite(1)));
 
         let mut result = elem.clone();
-        result.set("x".to_string(), decremented);
+        result.set("x", decremented);
 
         // Assume loop condition x > 0 holds
         let refined = domain.assume(&result, &NumExpr::var("x").gt(NumExpr::constant(0)));
@@ -190,7 +190,7 @@ fn example_unbounded_loop(_domain: &IntervalDomain, engine: &FixpointEngine<Inte
     // init3: Initial state with x = 0
     let init3 = {
         let mut elem = IntervalElement::new();
-        elem.set("x".to_string(), Interval::constant(0));
+        elem.set("x", Interval::constant(0));
         elem
     };
 
@@ -204,7 +204,7 @@ fn example_unbounded_loop(_domain: &IntervalDomain, engine: &FixpointEngine<Inte
         let incremented = Interval::new(x_int.low.add(&Bound::Finite(1)), x_int.high.add(&Bound::Finite(1)));
 
         let mut result = elem.clone();
-        result.set("x".to_string(), incremented);
+        result.set("x", incremented);
         result
     };
 

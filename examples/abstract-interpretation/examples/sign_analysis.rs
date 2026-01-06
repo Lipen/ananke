@@ -38,7 +38,7 @@ fn example_division_by_zero() {
     println!();
 
     let mut elem = SignElement::new();
-    elem.set("x".to_string(), Sign::Top); // x is unknown initially
+    elem.set("x", Sign::Top); // x is unknown initially
 
     println!("Initial state: x = {}", elem.get("x"));
 
@@ -66,7 +66,7 @@ fn example_division_by_zero() {
     println!();
 
     let mut elem = SignElement::new();
-    elem.set("x".to_string(), Sign::Top);
+    elem.set("x", Sign::Top);
 
     let pred = NumExpr::var("x").le(NumExpr::constant(0));
     let elem = domain.assume(&elem, &pred);
@@ -96,14 +96,14 @@ fn example_conditional_analysis() {
     println!();
 
     let mut elem = SignElement::new();
-    elem.set("x".to_string(), Sign::Top); // x can be any value
+    elem.set("x", Sign::Top); // x can be any value
 
     println!("Initial: x = {}", elem.get("x"));
 
     // Evaluate x * x
     let expr = NumExpr::var("x").mul(NumExpr::var("x"));
 
-    let result = domain.assign(&elem, &"temp".to_string(), &expr);
+    let result = domain.assign(&elem, "temp", &expr);
     let sign_of_square = result.get("temp");
 
     println!("Sign of x*x: {}", sign_of_square);
@@ -133,20 +133,20 @@ fn example_loop_analysis() {
     println!();
 
     // Initial state
-    let mut elem = domain.constant(&"i".to_string(), 0);
+    let mut elem = domain.constant("i", 0);
     println!("Initial: i = {}", elem.get("i"));
 
     // First iteration: i = 0 + 1
     let expr = NumExpr::var("i").add(NumExpr::constant(1));
-    elem = domain.assign(&elem, &"i".to_string(), &expr);
+    elem = domain.assign(&elem, "i", &expr);
     println!("After i = i + 1: i = {}", elem.get("i"));
 
     // Second iteration: Pos + 1
-    elem = domain.assign(&elem, &"i".to_string(), &expr);
+    elem = domain.assign(&elem, "i", &expr);
     println!("After i = i + 1: i = {}", elem.get("i"));
 
     // Simulate fixpoint with join: Zero ⊔ Pos = NonNeg
-    let initial = domain.constant(&"i".to_string(), 0);
+    let initial = domain.constant("i", 0);
     elem = domain.join(&initial, &elem);
     println!("After join with initial (fixpoint): i = {}", elem.get("i"));
 
@@ -173,8 +173,8 @@ fn example_overflow_detection() {
     println!();
 
     let mut elem = SignElement::new();
-    elem.set("x".to_string(), Sign::Top);
-    elem.set("y".to_string(), Sign::Top);
+    elem.set("x", Sign::Top);
+    elem.set("y", Sign::Top);
 
     // Assume x > 0
     let pred = NumExpr::var("x").gt(NumExpr::constant(0));
@@ -190,7 +190,7 @@ fn example_overflow_detection() {
 
     // z = x + y
     let expr = NumExpr::var("x").add(NumExpr::var("y"));
-    let result = domain.assign(&elem, &"z".to_string(), &expr);
+    let result = domain.assign(&elem, "z", &expr);
 
     println!("  z = x + y: {}", result.get("z"));
 

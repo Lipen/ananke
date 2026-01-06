@@ -113,7 +113,7 @@ fn main() {
         println!("  Iter {}: s_next len = {}, widened = {}", i, s_next_len, new_s_len);
 
         let old_len = len_domain.get_length(&loop_state, "s");
-        loop_state.set("s".to_string(), new_s_len);
+        loop_state.set("s", new_s_len);
 
         if old_len == new_s_len {
             println!("  Convergence reached at iteration {}!", i);

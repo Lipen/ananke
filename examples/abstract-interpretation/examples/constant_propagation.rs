@@ -42,24 +42,24 @@ fn example_constant_folding() {
     println!();
 
     let mut elem = ConstantElement::new();
-    elem.set("x".to_string(), ConstValue::Const(5));
-    elem.set("y".to_string(), ConstValue::Const(3));
+    elem.set("x", ConstValue::Const(5));
+    elem.set("y", ConstValue::Const(3));
 
     println!("Initial: x = {}, y = {}", elem.get("x"), elem.get("y"));
 
     // z = x + y
     let expr = NumExpr::Add(Box::new(NumExpr::Var("x".to_string())), Box::new(NumExpr::Var("y".to_string())));
-    elem = domain.assign(&elem, &"z".to_string(), &expr);
+    elem = domain.assign(&elem, "z", &expr);
     println!("After z = x + y: z = {}", elem.get("z"));
 
     // w = z * 2
     let expr = NumExpr::Mul(Box::new(NumExpr::Var("z".to_string())), Box::new(NumExpr::Const(2)));
-    elem = domain.assign(&elem, &"w".to_string(), &expr);
+    elem = domain.assign(&elem, "w", &expr);
     println!("After w = z * 2: w = {}", elem.get("w"));
 
     // result = w - 4
     let expr = NumExpr::Sub(Box::new(NumExpr::Var("w".to_string())), Box::new(NumExpr::Const(4)));
-    elem = domain.assign(&elem, &"result".to_string(), &expr);
+    elem = domain.assign(&elem, "result", &expr);
     println!("After result = w - 4: result = {}", elem.get("result"));
 
     println!("\n✓ Constant propagation eliminated all intermediate variables!");
@@ -91,7 +91,7 @@ fn example_dead_code_elimination() {
     println!();
 
     let mut elem = ConstantElement::new();
-    elem.set("x".to_string(), ConstValue::Const(5));
+    elem.set("x", ConstValue::Const(5));
 
     println!("State: x = {}", elem.get("x"));
 
@@ -131,7 +131,7 @@ fn example_conditional_simplification() {
     println!();
 
     let mut elem = ConstantElement::new();
-    elem.set("DEBUG".to_string(), ConstValue::Const(1));
+    elem.set("DEBUG", ConstValue::Const(1));
 
     println!("State: DEBUG = {}", elem.get("DEBUG"));
 
@@ -152,7 +152,7 @@ fn example_conditional_simplification() {
     println!("  DEBUG = 0;");
     println!();
 
-    elem.set("DEBUG".to_string(), ConstValue::Const(0));
+    elem.set("DEBUG", ConstValue::Const(0));
     println!("State: DEBUG = {}", elem.get("DEBUG"));
 
     let pred = NumExpr::var("DEBUG").neq(NumExpr::constant(0));
@@ -184,9 +184,9 @@ fn example_optimization_opportunities() {
     println!();
 
     let mut elem = ConstantElement::new();
-    elem.set("THRESHOLD".to_string(), ConstValue::Const(100));
-    elem.set("FACTOR".to_string(), ConstValue::Const(2));
-    elem.set("x".to_string(), ConstValue::Top); // Unknown input
+    elem.set("THRESHOLD", ConstValue::Const(100));
+    elem.set("FACTOR", ConstValue::Const(2));
+    elem.set("x", ConstValue::Top); // Unknown input
 
     println!("Constants:");
     println!("  THRESHOLD = {}", elem.get("THRESHOLD"));
@@ -206,7 +206,7 @@ fn example_optimization_opportunities() {
         Box::new(NumExpr::Var("x".to_string())),
         Box::new(NumExpr::Var("FACTOR".to_string())),
     );
-    elem = domain.assign(&elem, &"y".to_string(), &expr);
+    elem = domain.assign(&elem, "y", &expr);
 
     println!("  y = x * FACTOR = {}", elem.get("y"));
     println!();
@@ -221,15 +221,15 @@ fn example_optimization_opportunities() {
     println!();
 
     let mut elem2 = ConstantElement::new();
-    elem2.set("THRESHOLD".to_string(), ConstValue::Const(100));
-    elem2.set("FACTOR".to_string(), ConstValue::Const(2));
-    elem2.set("x".to_string(), ConstValue::Const(42));
+    elem2.set("THRESHOLD", ConstValue::Const(100));
+    elem2.set("FACTOR", ConstValue::Const(2));
+    elem2.set("x", ConstValue::Const(42));
 
     let expr = NumExpr::Mul(
         Box::new(NumExpr::Var("x".to_string())),
         Box::new(NumExpr::Var("FACTOR".to_string())),
     );
-    elem2 = domain.assign(&elem2, &"y".to_string(), &expr);
+    elem2 = domain.assign(&elem2, "y", &expr);
 
     println!("  y = x * FACTOR = {}", elem2.get("y"));
     println!("\n✓ Complete constant propagation: y = 84");

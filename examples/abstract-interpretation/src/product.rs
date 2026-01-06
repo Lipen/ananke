@@ -189,12 +189,12 @@ mod tests {
 
         let e1 = ProductElement {
             control: SimpleElement::A,
-            numeric: numeric.constant(&"x".to_string(), 5),
+            numeric: numeric.constant("x", 5),
         };
 
         let e2 = ProductElement {
             control: SimpleElement::B,
-            numeric: numeric.constant(&"x".to_string(), 10),
+            numeric: numeric.constant("x", 10),
         };
 
         // Test join

@@ -94,7 +94,7 @@
 //! let domain = IntervalDomain;
 //!
 //! // 2. Define the program state (x = 0)
-//! let state = domain.interval(&"x".to_string(), 0, 0);
+//! let state = domain.interval("x", 0, 0);
 //! println!("Initial state: {:?}", state); // x ∈ [0, 0]
 //!
 //! // 3. Analyze an assignment: x = x + 5
@@ -104,10 +104,10 @@
 //! );
 //!
 //! // Update the state with the new value
-//! let next_state = domain.assign(&state, &"x".to_string(), &expr);
+//! let next_state = domain.assign(&state, "x", &expr);
 //!
 //! // 4. Verify the result
-//! let bounds = domain.get_bounds(&next_state, &"x".to_string()).unwrap();
+//! let bounds = domain.get_bounds(&next_state, "x").unwrap();
 //! assert_eq!(bounds, (5, 5));
 //! println!("After assignment: x ∈ {:?}", bounds);
 //! ```

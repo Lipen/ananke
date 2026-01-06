@@ -2136,7 +2136,7 @@ mod product_tests {
         // Initial: {true ↦ x = 0}
         let control_top = control_domain.top();
         let mut numeric_initial = IntervalElement::new();
-        numeric_initial.set("x".to_string(), Interval::constant(0));
+        numeric_initial.set("x", Interval::constant(0));
 
         let mut partitions = HashMap::new();
         partitions.insert(HashableControlState(control_top), numeric_initial);
@@ -2167,7 +2167,7 @@ mod product_tests {
         // Start with: {true ↦ x ∈ [0,10]}
         let control_top = control_domain.top();
         let mut numeric_initial = IntervalElement::new();
-        numeric_initial.set("x".to_string(), Interval::new(Bound::Finite(0), Bound::Finite(10)));
+        numeric_initial.set("x", Interval::new(Bound::Finite(0), Bound::Finite(10)));
 
         let mut partitions = HashMap::new();
         partitions.insert(HashableControlState(control_top.clone()), numeric_initial.clone());
@@ -2199,10 +2199,10 @@ mod product_tests {
         let flag_false = control_domain.mk_var_false("flag");
 
         let mut numeric1 = IntervalElement::new();
-        numeric1.set("x".to_string(), Interval::constant(5));
+        numeric1.set("x", Interval::constant(5));
 
         let mut numeric2 = IntervalElement::new();
-        numeric2.set("x".to_string(), Interval::constant(0));
+        numeric2.set("x", Interval::constant(0));
 
         let mut partitions = HashMap::new();
         partitions.insert(HashableControlState(flag_true.clone()), numeric1);
@@ -2232,10 +2232,10 @@ mod product_tests {
         let flag_false = control_domain.mk_var_false("flag");
 
         let mut numeric1 = IntervalElement::new();
-        numeric1.set("x".to_string(), Interval::constant(5));
+        numeric1.set("x", Interval::constant(5));
 
         let mut numeric2 = IntervalElement::new();
-        numeric2.set("x".to_string(), Interval::constant(10));
+        numeric2.set("x", Interval::constant(10));
 
         let mut partitions = HashMap::new();
         partitions.insert(HashableControlState(flag_true), numeric1.clone());
@@ -2263,7 +2263,7 @@ mod product_tests {
         // Start with: {true ↦ x ∈ [0,10]}
         let control_top = control_domain.top();
         let mut numeric = IntervalElement::new();
-        numeric.set("x".to_string(), Interval::new(Bound::Finite(0), Bound::Finite(10)));
+        numeric.set("x", Interval::new(Bound::Finite(0), Bound::Finite(10)));
 
         let mut partitions = HashMap::new();
         partitions.insert(HashableControlState(control_top), numeric);
@@ -2292,7 +2292,7 @@ mod product_tests {
         let flag_true = control_domain.mk_var_true("flag");
 
         let mut numeric1 = IntervalElement::new();
-        numeric1.set("x".to_string(), Interval::constant(5));
+        numeric1.set("x", Interval::constant(5));
 
         let mut partitions1 = HashMap::new();
         partitions1.insert(HashableControlState(flag_true.clone()), numeric1);
@@ -2307,7 +2307,7 @@ mod product_tests {
         let flag_false = control_domain.mk_var_false("flag");
 
         let mut numeric2 = IntervalElement::new();
-        numeric2.set("x".to_string(), Interval::constant(0));
+        numeric2.set("x", Interval::constant(0));
 
         let mut partitions2 = HashMap::new();
         partitions2.insert(HashableControlState(flag_false), numeric2);
@@ -2335,7 +2335,7 @@ mod product_tests {
         let flag_true = control_domain.mk_var_true("flag");
 
         let mut numeric1 = IntervalElement::new();
-        numeric1.set("x".to_string(), Interval::new(Bound::Finite(0), Bound::Finite(10)));
+        numeric1.set("x", Interval::new(Bound::Finite(0), Bound::Finite(10)));
 
         let mut partitions1 = HashMap::new();
         partitions1.insert(HashableControlState(flag_true.clone()), numeric1);
@@ -2348,7 +2348,7 @@ mod product_tests {
 
         // Create elem2: {flag=true ↦ x ∈ [5,15]}
         let mut numeric2 = IntervalElement::new();
-        numeric2.set("x".to_string(), Interval::new(Bound::Finite(5), Bound::Finite(15)));
+        numeric2.set("x", Interval::new(Bound::Finite(5), Bound::Finite(15)));
 
         let mut partitions2 = HashMap::new();
         partitions2.insert(HashableControlState(flag_true), numeric2);
@@ -2381,7 +2381,7 @@ mod product_tests {
         // Initial: {true ↦ x=0, flag undefined}
         let control_top = control_domain.top();
         let mut numeric_initial = IntervalElement::new();
-        numeric_initial.set("x".to_string(), Interval::constant(0));
+        numeric_initial.set("x", Interval::constant(0));
 
         let mut partitions = HashMap::new();
         partitions.insert(HashableControlState(control_top), numeric_initial);
@@ -2399,7 +2399,7 @@ mod product_tests {
 
         // Path 1: flag=true, x=5
         let mut numeric_path1 = IntervalElement::new();
-        numeric_path1.set("x".to_string(), Interval::constant(5));
+        numeric_path1.set("x", Interval::constant(5));
 
         let mut partitions1 = HashMap::new();
         partitions1.insert(HashableControlState(flag_true.clone()), numeric_path1);
@@ -2412,7 +2412,7 @@ mod product_tests {
 
         // Path 2: flag=false, x=0
         let mut numeric_path2 = IntervalElement::new();
-        numeric_path2.set("x".to_string(), Interval::constant(0));
+        numeric_path2.set("x", Interval::constant(0));
 
         let mut partitions2 = HashMap::new();
         partitions2.insert(HashableControlState(flag_false), numeric_path2);
@@ -2454,10 +2454,10 @@ mod product_tests {
         let flag_false = control_domain.mk_var_false("flag");
 
         let mut numeric1 = IntervalElement::new();
-        numeric1.set("x".to_string(), Interval::constant(5));
+        numeric1.set("x", Interval::constant(5));
 
         let mut numeric2 = IntervalElement::new();
-        numeric2.set("x".to_string(), Interval::constant(0));
+        numeric2.set("x", Interval::constant(0));
 
         let mut partitions = HashMap::new();
         partitions.insert(HashableControlState(flag_true.clone()), numeric1.clone());
@@ -2500,10 +2500,10 @@ mod product_tests {
         let flag_false = control_domain.mk_var_false("flag");
 
         let mut numeric1 = IntervalElement::new();
-        numeric1.set("x".to_string(), Interval::constant(5));
+        numeric1.set("x", Interval::constant(5));
 
         let mut numeric2 = IntervalElement::new();
-        numeric2.set("x".to_string(), Interval::constant(0));
+        numeric2.set("x", Interval::constant(0));
 
         let mut partitions1 = HashMap::new();
         partitions1.insert(HashableControlState(flag_true.clone()), numeric1.clone());

@@ -88,7 +88,7 @@ mod tests {
 
         let elem = {
             let mut e = IntervalElement::new();
-            e.set("x".to_string(), Interval::new(Bound::Finite(0), Bound::Finite(10)));
+            e.set("x", Interval::new(Bound::Finite(0), Bound::Finite(10)));
             e
         };
 
@@ -109,7 +109,7 @@ mod tests {
 
         let elem = {
             let mut e = IntervalElement::new();
-            e.set("x".to_string(), Interval::new(Bound::Finite(-10), Bound::Finite(10)));
+            e.set("x", Interval::new(Bound::Finite(-10), Bound::Finite(10)));
             e
         };
 

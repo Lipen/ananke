@@ -769,8 +769,8 @@ impl PointsToElement {
     }
 
     /// Set the points-to BDD for a variable.
-    pub fn set(&mut self, var: String, bdd: Ref) {
-        self.points_to.insert(var, bdd);
+    pub fn set(&mut self, var: impl Into<String>, bdd: Ref) {
+        self.points_to.insert(var.into(), bdd);
     }
 
     /// Check if this element is bottom (unreachable).
@@ -1564,10 +1564,10 @@ mod tests {
         // elem2: p -> {}, q -> {y}
         // meet: p -> {}, q -> {}
         let mut elem3 = PointsToElement::new(Rc::clone(domain.bdd()));
-        elem3.set("q".to_string(), domain.encode_location(&x_loc));
+        elem3.set("q", domain.encode_location(&x_loc));
 
         let mut elem4 = PointsToElement::new(Rc::clone(domain.bdd()));
-        elem4.set("r".to_string(), domain.encode_location(&y_loc));
+        elem4.set("r", domain.encode_location(&y_loc));
 
         let met2 = domain.meet(&elem3, &elem4);
         // elem3 has q, elem4 has r, meet should have neither with non-empty sets
