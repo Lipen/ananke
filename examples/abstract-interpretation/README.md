@@ -82,10 +82,9 @@ And the fixpoint driver:
 use abstract_interpretation::{AbstractDomain, FixpointEngine, IntervalDomain};
 
 let domain = IntervalDomain;
-let _extrema = (domain.bottom(), domain.top());
+let extrema = (domain.bottom(), domain.top());
 
 let engine = FixpointEngine::new(domain);
-let _ = engine;
 ```
 
 For exact signatures and the intended laws, prefer the rustdoc on `AbstractDomain`, `NumericDomain`,
