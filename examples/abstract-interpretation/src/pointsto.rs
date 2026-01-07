@@ -464,23 +464,29 @@ impl PointsToDomain {
 
     /// Decode a BDD to a set of locations.
     ///
-    /// This extracts all satisfying assignments (locations) from the BDD.
+    /// Extracts all locations that appear positively in any satisfying
+    /// assignment of the BDD by enumerating all satisfying paths.
+    ///
+    /// For each satisfying assignment (path through the BDD to ONE), we extract
+    /// the positive literals (variables set to true) and map them back to locations.
     pub fn decode_bdd(&self, bdd: Ref) -> HashSet<Location> {
         let mut locations = HashSet::new();
 
+        // Empty BDD represents empty set
         if self.bdd.is_zero(bdd) {
             return locations;
         }
 
-        // Get all paths to ONE in the BDD
+        // Extract all satisfying paths through the BDD
         let paths = self.bdd.paths(bdd);
 
         for path in paths {
-            // Each path represents a conjunction of literals
-            // Extract positive literals (locations present)
+            // Each path is a conjunction of literals (some positive, some negative)
+            // Extract positive literals - these are the locations in this satisfying assignment
             for lit in &path {
                 if lit.is_positive() {
                     let var = lit.var().id() as usize;
+                    // Map BDD variable back to location
                     if let Some(loc) = self.locations.borrow().get_location(var) {
                         locations.insert(loc.clone());
                     }
