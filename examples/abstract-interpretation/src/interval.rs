@@ -185,6 +185,41 @@ impl Interval {
         let high = if other.high > self.high { Bound::PosInf } else { self.high };
         Interval { low, high }
     }
+
+    /// Check if `self` is a subset of `other` (containment check).
+    ///
+    /// Returns `true` iff all values in `self` are also in `other`.
+    /// Formally: `self ⊆ other` iff `other.low <= self.low` and `self.high <= other.high`.
+    pub fn is_subset_of(&self, other: &Interval) -> bool {
+        if self.is_empty() {
+            return true; // Empty is subset of everything
+        }
+        if other.is_empty() {
+            return false; // Non-empty not subset of empty
+        }
+        self.low >= other.low && self.high <= other.high
+    }
+
+    /// Check if `other` is contained in `self` (superset check).
+    ///
+    /// Returns `true` iff all values in `other` are also in `self`.
+    /// Equivalent to `other.is_subset_of(self)`.
+    pub fn contains_interval(&self, other: &Interval) -> bool {
+        other.is_subset_of(self)
+    }
+
+    /// Check if two intervals overlap (have non-empty intersection).
+    pub fn overlaps(&self, other: &Interval) -> bool {
+        if self.is_empty() || other.is_empty() {
+            return false;
+        }
+        self.low <= other.high && other.low <= self.high
+    }
+
+    /// Check if two intervals are disjoint (no overlap).
+    pub fn is_disjoint(&self, other: &Interval) -> bool {
+        !self.overlaps(other)
+    }
 }
 
 impl fmt::Display for Interval {
