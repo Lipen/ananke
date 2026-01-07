@@ -12,10 +12,7 @@ use abstract_interpretation::*;
 fn main() {
     println!("=== Simple Loop Analysis ===\n");
 
-    // Create interval domain
     let domain = IntervalDomain;
-
-    // Create fixpoint engine
     let engine = FixpointEngine {
         domain: domain.clone(),
         widening_threshold: 3,
@@ -30,17 +27,10 @@ fn main() {
     println!("=== Analysis Complete ===");
 }
 
-/// Example 1: Counter loop
+/// Example 1: Counter loop - computes loop invariant
 fn example_counter_loop(domain: &IntervalDomain, engine: &FixpointEngine<IntervalDomain>) {
     println!("Example 1: Counter Loop");
-    println!("-----------------------");
-
-    // let x = 0;
-    // while (x < 10) { x = x + 1; }
-    //
-    // NOTE: This computes the loop *invariant* (states satisfying x < 10),
-    // not the full reachable set. To get the exit state properly, we'd need
-    // to compute lfp(λσ. σ ⊔ (x+1 if x<10)) then apply exit condition.
+    println!("----------------------");
     println!("Program:");
     println!("  x = 0;");
     println!("  while (x < 10) {{");
@@ -48,79 +38,75 @@ fn example_counter_loop(domain: &IntervalDomain, engine: &FixpointEngine<Interva
     println!("  }}");
     println!();
 
-    // init1: Initial abstract state before loop execution
-    // Represents: x = 0 (precise constant value)
-    // This is the starting point for fixpoint computation: lfp(λX. init ⊔ f(X))
-    let init1 = {
-        let mut elem = IntervalElement::new();
-        elem.set("x", Interval::constant(0));
-        elem
-    };
+    // Initial state before loop
+    let mut init1 = IntervalElement::new();
+    init1.set("x", Interval::constant(0));
 
-    println!("Initial: x ∈ [0, 0]");
+    // States that enter the loop: must satisfy condition
+    let entry1 = domain.assume(&init1, &NumExpr::var("x").lt(NumExpr::constant(10)));
 
-    // f1: Loop body transfer function
-    // Represents: One iteration of the loop body
-    // Input: Current abstract state (elem)
-    // Output: Abstract state after executing loop body IF condition holds
-    // Steps: 1) Execute x := x + 1
-    //        2) Assume loop condition (x < 10) holds
+    // Fixpoint: apply loop body repeatedly until convergence
     let f1 = |elem: &IntervalElement| {
-        // Step 1: Execute assignment x := x + 1
+        // Loop body: x = x + 1
         let x_int = elem.get("x");
         let incremented = Interval::new(x_int.low.add(&Bound::Finite(1)), x_int.high.add(&Bound::Finite(1)));
-
         let mut result = elem.clone();
         result.set("x", incremented);
-
-        // Step 2: Assume loop condition x < 10 holds (refines the state)
+        // Check loop condition: must satisfy x < 10 to continue
         let refined = domain.assume(&result, &NumExpr::var("x").lt(NumExpr::constant(10)));
         refined
     };
 
-    // result1: Computed fixpoint - the loop invariant
-    // This is the solution to: lfp(λX. init1 ⊔ f1(X))
-    // Represents: All reachable states inside the loop body
-    let result1 = engine.lfp(init1, f1);
+    let inside_loop = engine.lfp(entry1, f1);
 
-    println!("Loop invariant: x ∈ {} (states inside loop body)", result1.get("x"));
+    // True invariant: must hold at entry AND inside loop
+    // Join: combine initial state with reachable states inside loop
+    let init_x1 = init1.get("x");
+    let inside_x1 = inside_loop.get("x");
+    let loop_inv1 = init_x1.join(&inside_x1);
+
+    println!("Loop invariant computed: x ∈ {}", loop_inv1);
     println!();
-    println!("🔍 How to interpret [2, 9] (not [0, 9]):");
-    println!("   • Widening at iteration 3: [0, 2] ∇ [0, 3] → [0, +∞]");
-    println!("   • Narrowing iteration 1: meet([0, +∞], [1, 9]) → [1, 9]");
-    println!("   • Narrowing iteration 2: meet([1, 9], [2, 9]) → [2, 9]");
-    println!("   • Result loses 0 and 1 due to narrowing precision limits");
+
+    // Verify the invariant holds everywhere
+
+    // Check 1: Initial value is in the invariant
+    let entry_value = 0;
+    assert!(
+        loop_inv1.contains(entry_value),
+        "Entry state x={} must be in {}",
+        entry_value,
+        loop_inv1
+    );
+    println!("  ✓ At entry: x = {} ∈ {}", entry_value, loop_inv1);
+
+    // Check 2: Inside-loop values are subset of invariant
+    let inside_interval = Interval::new(Bound::Finite(1), Bound::Finite(9));
+    assert!(
+        inside_interval.is_subset_of(&loop_inv1),
+        "Inside-loop {} must be ⊆ {}",
+        inside_interval,
+        loop_inv1
+    );
+    println!("  ✓ Inside loop: x ∈ {} ⊆ {}", inside_interval, loop_inv1);
+
+    // Check 3: Exit value violates loop condition
+    let exit_value = 10;
+    assert!(
+        !loop_inv1.contains(exit_value),
+        "Exit state x={} must violate invariant {}",
+        exit_value,
+        loop_inv1
+    );
+    println!("  ✓ At exit: x ≥ {} violates x < 10 and {}", exit_value, loop_inv1);
+
     println!();
-    println!("✅ How to USE this result:");
-    println!("   • [2, 9] is a SAFE over-approximation of loop states");
-    println!("   • Any property true for ALL values in [2, 9] is true in the loop");
-    println!("   • Example: Can prove x > 1 (always true in [2, 9])");
-    println!("   • Example: Cannot prove x < 5 (false for x=9, which is in [2, 9])");
-    println!("   • For verification: Checks like 'x > 0' will succeed ✓");
-    println!("   • Missing 0 and 1 doesn't cause unsoundness (over-approximation)");
-
-    // Assertions for Example 1
-    let x_inv = result1.get("x");
-    // We expect [2, 9] based on the explanation, or at least something within [0, 9]
-    // The explanation says [2, 9], let's verify bounds are finite and reasonable
-    if let (Bound::Finite(l), Bound::Finite(h)) = (x_inv.low, x_inv.high) {
-        assert!(l >= 0);
-        assert!(h <= 9); // Must be < 10
-        println!("\n✓ Verified: Loop invariant upper bound is {} (<= 9)", h);
-    } else {
-        panic!("Expected finite bounds for loop invariant, got {}", x_inv);
-    }
-
-    println!("\n");
 }
 
-/// Example 2: Countdown loop
+/// Example 2: Countdown loop - computes loop invariant from high value
 fn example_countdown(domain: &IntervalDomain, engine: &FixpointEngine<IntervalDomain>) {
     println!("Example 2: Countdown Loop");
-    println!("-------------------------");
-
-    // let x = 100;
-    // while (x > 0) { x = x - 1; }
+    println!("------------------------");
     println!("Program:");
     println!("  x = 100;");
     println!("  while (x > 0) {{");
@@ -128,58 +114,75 @@ fn example_countdown(domain: &IntervalDomain, engine: &FixpointEngine<IntervalDo
     println!("  }}");
     println!();
 
-    // init2: Initial state with x = 100
-    let init2 = {
-        let mut elem = IntervalElement::new();
-        elem.set("x", Interval::constant(100));
-        elem
-    };
+    // Initial state before loop
+    let mut init2 = IntervalElement::new();
+    init2.set("x", Interval::constant(100));
 
-    println!("Initial: x ∈ [100, 100]");
+    // States that enter the loop: must satisfy condition
+    let entry2 = domain.assume(&init2, &NumExpr::var("x").gt(NumExpr::constant(0)));
 
-    // f2: Loop body transfer function for countdown
-    // Executes: x := x - 1, then assumes x > 0
+    // Fixpoint: apply loop body repeatedly until convergence
     let f2 = |elem: &IntervalElement| {
+        // Loop body: x = x - 1
         let x_int = elem.get("x");
         let decremented = Interval::new(x_int.low.sub(&Bound::Finite(1)), x_int.high.sub(&Bound::Finite(1)));
-
         let mut result = elem.clone();
         result.set("x", decremented);
-
-        // Assume loop condition x > 0 holds
+        // Check loop condition: must satisfy x > 0 to continue
         let refined = domain.assume(&result, &NumExpr::var("x").gt(NumExpr::constant(0)));
         refined
     };
 
-    // result2: Loop invariant for countdown loop
-    let result2 = engine.lfp(init2, f2);
+    let inside_loop = engine.lfp(entry2, f2);
 
-    println!("Loop invariant: x ∈ {} (states inside loop body)", result2.get("x"));
-    println!("Interpretation: Values satisfying x > 0 during loop execution");
+    // True invariant: must hold at entry AND inside loop
+    // Join: combine initial state with reachable states inside loop
+    let init_x2 = init2.get("x");
+    let inside_x2 = inside_loop.get("x");
+    let loop_inv2 = init_x2.join(&inside_x2);
 
-    // Assertions for Example 2
-    let x_inv2 = result2.get("x");
-    if let (Bound::Finite(l), Bound::Finite(h)) = (x_inv2.low, x_inv2.high) {
-        assert!(l >= 1); // Must be > 0
-        assert!(h <= 100);
-        println!("\n✓ Verified: Loop invariant lower bound is {} (>= 1)", l);
-    } else {
-        // Depending on widening, it might be [1, 100] or similar.
-        // If widening goes to -inf, narrowing should bring it back to > 0 condition.
-        // Let's just check it's not empty.
-        assert!(!x_inv2.is_empty());
-    }
+    println!("Loop invariant computed: x ∈ {}", loop_inv2);
+    println!();
+
+    // Verify the invariant holds everywhere
+
+    // Check 1: Initial value is in the invariant
+    let entry_value = 100;
+    assert!(
+        loop_inv2.contains(entry_value),
+        "Entry state x={} must be in {}",
+        entry_value,
+        loop_inv2
+    );
+    println!("  ✓ At entry: x = {} ∈ {}", entry_value, loop_inv2);
+
+    // Check 2: Inside-loop values are subset of invariant
+    let inside_interval = Interval::new(Bound::Finite(1), Bound::Finite(99));
+    assert!(
+        inside_interval.is_subset_of(&loop_inv2),
+        "Inside-loop {} must be ⊆ {}",
+        inside_interval,
+        loop_inv2
+    );
+    println!("  ✓ Inside loop: x ∈ {} ⊆ {}", inside_interval, loop_inv2);
+
+    // Check 3: Exit value violates loop condition
+    let exit_value = 0;
+    assert!(
+        !loop_inv2.contains(exit_value),
+        "Exit state x={} must violate invariant {}",
+        exit_value,
+        loop_inv2
+    );
+    println!("  ✓ At exit: x ≤ {} violates x > 0 and {}", exit_value, loop_inv2);
 
     println!();
 }
 
-/// Example 3: Unbounded loop
+/// Example 3: Unbounded loop - demonstrates widening to +∞
 fn example_unbounded_loop(_domain: &IntervalDomain, engine: &FixpointEngine<IntervalDomain>) {
-    println!("Example 3: Unbounded Loop");
-    println!("-------------------------");
-
-    // let x = 0;
-    // while (true) { x = x + 1; }
+    println!("Example 3: Unbounded Loop (Infinite)");
+    println!("------------------------------------");
     println!("Program:");
     println!("  x = 0;");
     println!("  while (true) {{");
@@ -187,37 +190,57 @@ fn example_unbounded_loop(_domain: &IntervalDomain, engine: &FixpointEngine<Inte
     println!("  }}");
     println!();
 
-    // init3: Initial state with x = 0
-    let init3 = {
-        let mut elem = IntervalElement::new();
-        elem.set("x", Interval::constant(0));
-        elem
-    };
+    // Initial state before loop
+    let mut init3 = IntervalElement::new();
+    init3.set("x", Interval::constant(0));
 
-    println!("Initial: x ∈ [0, 0]");
-
-    // f3: Loop body transfer function for unbounded loop
-    // Only executes x := x + 1 (no loop condition to assume)
-    // This will cause widening to extrapolate to +∞
+    // Fixpoint: apply loop body repeatedly until convergence
+    // Note: No loop condition to refine, so widening must occur to ensure termination
     let f3 = |elem: &IntervalElement| {
+        // Loop body: x = x + 1
         let x_int = elem.get("x");
         let incremented = Interval::new(x_int.low.add(&Bound::Finite(1)), x_int.high.add(&Bound::Finite(1)));
-
         let mut result = elem.clone();
         result.set("x", incremented);
         result
     };
 
-    // result3: Loop invariant showing unbounded growth
-    // Upper bound extrapolates to +∞ via widening
-    let result3 = engine.lfp(init3, f3);
-    println!("Loop invariant: x ∈ {} (grows unboundedly)", result3.get("x"));
-    println!("(No exit - infinite loop!)");
+    let inside_loop = engine.lfp(init3.clone(), f3);
 
-    // Assertions for Example 3
-    let x_inv3 = result3.get("x");
-    assert_eq!(x_inv3.high, Bound::PosInf, "Expected upper bound to be +∞ due to widening");
-    println!("\n✓ Verified: Upper bound is +∞");
+    // True invariant: must hold at entry AND inside loop
+    // For infinite loops, join entry with reachable states
+    let init_x3 = init3.get("x");
+    let inside_x3 = inside_loop.get("x");
+    let loop_inv3 = init_x3.join(&inside_x3);
+
+    println!("Loop invariant computed: x ∈ {}", loop_inv3);
+    println!("This loop never terminates, so x grows unboundedly.");
+    println!();
+
+    // Verify widening occurred and invariant is correct
+
+    // Check 1: Initial value is in the invariant
+    let entry_value = 0;
+    assert!(
+        loop_inv3.contains(entry_value),
+        "Entry state x={} must be in {}",
+        entry_value,
+        loop_inv3
+    );
+    println!("  ✓ At entry: x = {} ∈ {}", entry_value, loop_inv3);
+
+    // Check 2: Inside-loop values are subset of invariant
+    assert!(
+        inside_x3.is_subset_of(&loop_inv3),
+        "Inside-loop {} must be ⊆ {}",
+        inside_x3,
+        loop_inv3
+    );
+    println!("  ✓ Inside loop: x ∈ {} ⊆ {}", inside_x3, loop_inv3);
+
+    // Check 3: Infinite loop - no exit condition, grows unbounded
+    assert!(matches!(loop_inv3.high, Bound::PosInf), "x should grow to +∞");
+    println!("  ✓ No exit: loop never terminates, x → +∞");
 
     println!();
 }
