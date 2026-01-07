@@ -1741,13 +1741,14 @@ impl<N: NumericDomain> ControlSensitiveProduct<N> {
     pub fn assign_all(
         &self,
         elem: &ControlSensitiveElement<N>,
-        var: &N::Var,
+        var: impl Into<N::Var>,
         expr: &crate::expr::NumExpr<N::Var, N::Value>,
     ) -> ControlSensitiveElement<N>
     where
         N::Element: Clone,
     {
         let mut new_partitions = HashMap::new();
+        let var = var.into();
 
         for (hcs, numeric_elem) in &elem.partitions {
             let new_numeric = self.numeric_domain.assign(numeric_elem, var.clone(), expr);
@@ -2096,7 +2097,7 @@ mod product_tests {
 
         // Apply numeric assignment x := 5
         let expr = NumExpr::constant(5);
-        let state_with_x5 = product.assign_all(&state_after_assign, &"x".to_string(), &expr);
+        let state_with_x5 = product.assign_all(&state_after_assign, "x", &expr);
 
         // Should have one partition: flag=true → x=5
         assert_eq!(state_with_x5.partition_count(), 1);
@@ -2193,7 +2194,7 @@ mod product_tests {
 
         // Assign: x := x + 1
         let expr = NumExpr::var("x").add(NumExpr::constant(1));
-        let result = product.assign_all(&elem, &"x".to_string(), &expr);
+        let result = product.assign_all(&elem, "x", &expr);
 
         // Should still have 2 partitions (control states unchanged)
         assert_eq!(result.partition_count(), 2);
@@ -2377,7 +2378,7 @@ mod product_tests {
 
         // Apply only to flag=true partition
         let flag_true_path = product.assume_control(&flag_true, &state_after_if1);
-        let flag_true_updated = product.assign_all(&flag_true_path, &"x".to_string(), &expr_add10);
+        let flag_true_updated = product.assign_all(&flag_true_path, "x", &expr_add10);
 
         // Query x on flag=true path
         let numeric_on_true = flag_true_updated.partitions.values().next().unwrap();
