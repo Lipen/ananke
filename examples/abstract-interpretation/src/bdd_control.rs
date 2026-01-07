@@ -1470,7 +1470,6 @@ impl<N: NumericDomain> ControlSensitiveProduct<N> {
 
     /// Split each partition into two: one where condition holds, one where it doesn't
     ///
-    /// This implements the splitting logic from section 3.1 of the design doc.
     /// Each partition (φ, e) is split into:
     /// - (φ ∧ condition, e) if satisfiable
     /// - (φ ∧ ¬condition, e) if satisfiable
@@ -1825,7 +1824,6 @@ impl<N: NumericDomain> ControlSensitiveProduct<N> {
 impl<N: NumericDomain> ControlSensitiveProduct<N> {
     /// Assign a control variable: control_var := expr
     ///
-    /// This implements section 3.1 of the design document.
     /// The semantics depend on whether `expr` can be evaluated in the current context:
     ///
     /// - **expr = true**: Refine control state with `var = true`
@@ -2074,7 +2072,6 @@ mod product_tests {
 
     #[test]
     fn test_simple_flag_example() {
-        // Example 8.1 from design doc: Simple flag analysis
         let product = make_product_domain();
         let control_domain = product.control_domain();
 
