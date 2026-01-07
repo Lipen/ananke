@@ -10,6 +10,7 @@
 use abstract_interpretation::*;
 
 fn main() {
+    env_logger::init();
     println!("=== Simple Loop Analysis ===\n");
 
     let domain = IntervalDomain;

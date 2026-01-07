@@ -18,6 +18,7 @@ use abstract_interpretation::expr::NumExpr;
 use abstract_interpretation::numeric::NumericDomain;
 
 fn main() {
+    env_logger::init();
     println!("=== Constant Propagation Analysis Examples ===\n");
 
     example_constant_folding();

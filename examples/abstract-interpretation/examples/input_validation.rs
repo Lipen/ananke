@@ -15,6 +15,7 @@
 use abstract_interpretation::*;
 
 fn main() {
+    env_logger::init();
     println!("=== Input Validation Analysis ===\n");
 
     println!("This example demonstrates analyzing input validation logic using string length abstraction.");

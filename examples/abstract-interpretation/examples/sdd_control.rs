@@ -12,6 +12,7 @@
 use abstract_interpretation::{AbstractDomain, SddControlDomain};
 
 fn main() {
+    env_logger::init();
     println!("=== SDD Control Domain Analysis ===");
     println!();
 

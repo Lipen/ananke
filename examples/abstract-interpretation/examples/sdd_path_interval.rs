@@ -20,6 +20,7 @@
 use abstract_interpretation::{AbstractDomain, IntervalDomain, ProductDomain, ProductElement, SddControlDomain};
 
 fn main() {
+    env_logger::init();
     println!("=== SDD-based Path-Sensitive Analysis ===");
     println!();
 

@@ -20,6 +20,7 @@ use std::rc::Rc;
 use abstract_interpretation::*;
 
 fn main() {
+    env_logger::init();
     println!("=== Traffic Light Controller Analysis ===");
     println!();
 

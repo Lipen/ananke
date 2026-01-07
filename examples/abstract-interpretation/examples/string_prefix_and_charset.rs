@@ -17,6 +17,7 @@ use abstract_interpretation::domain::AbstractDomain;
 use abstract_interpretation::string_domain::{CharacterSet, CharacterSetDomain, StringPrefix, StringPrefixDomain};
 
 fn main() {
+    env_logger::init();
     println!("=== Advanced String Analysis ===");
     println!("Demonstrating String Prefix and Character Set domains.\n");
 

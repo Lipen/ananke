@@ -29,6 +29,7 @@ use abstract_interpretation::generic_product::{ProductDomain, ProductElement};
 use abstract_interpretation::interval::{Bound, Interval, SingleIntervalDomain};
 
 fn main() {
+    env_logger::init();
     println!("=== Loop Optimization Analysis ===\n");
 
     example_strided_loop();

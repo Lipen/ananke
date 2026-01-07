@@ -15,6 +15,7 @@
 use abstract_interpretation::*;
 
 fn main() {
+    env_logger::init();
     println!("=== Transfer Function Analysis ===");
 
     let domain = IntervalDomain;

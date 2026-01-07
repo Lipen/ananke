@@ -15,6 +15,7 @@ use abstract_interpretation::numeric::NumericDomain;
 use abstract_interpretation::sign::{Sign, SignDomain, SignElement};
 
 fn main() {
+    env_logger::init();
     println!("=== Sign Domain Analysis Examples ===\n");
 
     example_division_by_zero();

@@ -13,6 +13,7 @@ use abstract_interpretation::string_domain::{RegexDomain, StringRegex};
 use regex::Regex;
 
 fn main() {
+    env_logger::init();
     println!("=== Regex Domain Analysis ===\n");
 
     test_id_generation();

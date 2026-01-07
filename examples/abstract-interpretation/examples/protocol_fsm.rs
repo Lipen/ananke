@@ -21,6 +21,7 @@ use std::rc::Rc;
 use abstract_interpretation::*;
 
 fn main() {
+    env_logger::init();
     println!("=== Protocol State Machine Analysis ===\n");
 
     // System description

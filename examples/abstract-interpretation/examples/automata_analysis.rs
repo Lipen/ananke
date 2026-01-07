@@ -23,6 +23,7 @@
 use abstract_interpretation::*;
 
 fn main() {
+    env_logger::init();
     println!("=== Symbolic Automata Domain Analysis ===\n");
 
     let domain = AutomataDomain;

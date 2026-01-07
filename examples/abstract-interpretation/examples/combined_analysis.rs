@@ -17,6 +17,7 @@ use abstract_interpretation::numeric::NumericDomain;
 use abstract_interpretation::sign::{Sign, SignDomain, SignElement};
 
 fn main() {
+    env_logger::init();
     println!("=== Combined Domain Analysis Examples ===\n");
 
     example_sign_constant_cooperation();

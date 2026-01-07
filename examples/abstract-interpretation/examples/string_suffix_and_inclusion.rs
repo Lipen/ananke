@@ -17,6 +17,7 @@ use abstract_interpretation::domain::AbstractDomain;
 use abstract_interpretation::string_domain::{StringInclusionDomain, StringSuffix, StringSuffixDomain};
 
 fn main() {
+    env_logger::init();
     println!("=== More Advanced String Analysis ===");
     println!("Demonstrating String Suffix and String Inclusion domains.\n");
 

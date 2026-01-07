@@ -17,6 +17,7 @@ use abstract_interpretation::domain::AbstractDomain;
 use abstract_interpretation::{Bound, Interval, NumExpr, StringLengthDomain};
 
 fn main() {
+    env_logger::init();
     println!("=== String Concatenation Analysis ===\n");
 
     println!("This example demonstrates analyzing string lengths during concatenation.");

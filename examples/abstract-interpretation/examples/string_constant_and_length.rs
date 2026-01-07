@@ -16,6 +16,7 @@ use abstract_interpretation::domain::AbstractDomain;
 use abstract_interpretation::{Interval, StringConst, StringConstantDomain, StringLengthDomain};
 
 fn main() {
+    env_logger::init();
     println!("=== String Analysis Example ===");
     println!("This example demonstrates two string abstract domains:");
     println!("1. String Constant Domain: Tracks exact string values.");

@@ -17,6 +17,7 @@ use std::rc::Rc;
 use abstract_interpretation::{AbstractDomain, Location, PointsToDomain, PointsToElement};
 
 fn main() {
+    env_logger::init();
     println!("=== Points-to Analysis Examples ===\n");
 
     example_1_basic_assignment();

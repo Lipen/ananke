@@ -23,6 +23,7 @@ use std::rc::Rc;
 use abstract_interpretation::*;
 
 fn main() {
+    env_logger::init();
     println!("=== Mode-Based Controller Analysis ===\n");
 
     // System description

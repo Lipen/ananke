@@ -14,6 +14,7 @@ use abstract_interpretation::domain::AbstractDomain;
 use abstract_interpretation::type_domain::{Type, TypeDomain};
 
 fn main() {
+    env_logger::init();
     println!("=== Dynamic Type Checking Analysis ===\n");
 
     println!("Demonstrating type inference for dynamic code.\n");

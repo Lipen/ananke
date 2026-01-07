@@ -16,6 +16,7 @@ use abstract_interpretation::constant::ConstValue;
 use abstract_interpretation::*;
 
 fn main() {
+    env_logger::init();
     println!("=== Realistic Program Analysis ===\n");
 
     example_array_bounds_checking();

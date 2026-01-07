@@ -18,6 +18,7 @@ use abstract_interpretation::domain::AbstractDomain;
 use abstract_interpretation::string_domain::{StringCase, StringCaseDomain, StringNumeric, StringNumericDomain, TaintDomain};
 
 fn main() {
+    env_logger::init();
     println!("=== Security and Normalization Analysis ===\n");
 
     example_sql_injection();
