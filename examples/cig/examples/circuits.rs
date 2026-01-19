@@ -18,7 +18,12 @@ fn main() {
     println!("Parity-4: x1 XOR x2 XOR x3 XOR x4");
     let parity_4 = TruthTable::from_expr(4, |x| x[0] ^ x[1] ^ x[2] ^ x[3]);
     let cig = builder.build(&parity_4);
-    println!("  CIG: {} nodes, depth: {}, width: {}", cig.size(), cig.depth(), cig.interaction_width());
+    println!(
+        "  CIG: {} nodes, depth: {}, width: {}",
+        cig.size(),
+        cig.depth(),
+        cig.interaction_width()
+    );
     for line in cig.to_string().lines() {
         println!("  {}", line);
     }
@@ -29,7 +34,12 @@ fn main() {
     println!("Full Adder Sum: a XOR b XOR c_in");
     let fa_sum = TruthTable::from_expr(3, |x| x[0] ^ x[1] ^ x[2]);
     let cig = builder.build(&fa_sum);
-    println!("  CIG: {} nodes, depth: {}, width: {}", cig.size(), cig.depth(), cig.interaction_width());
+    println!(
+        "  CIG: {} nodes, depth: {}, width: {}",
+        cig.size(),
+        cig.depth(),
+        cig.interaction_width()
+    );
     for line in cig.to_string().lines() {
         println!("  {}", line);
     }
@@ -43,7 +53,12 @@ fn main() {
     println!("Full Adder Carry: (a AND b) OR (c_in AND (a XOR b))");
     let fa_carry = TruthTable::from_expr(3, |x| (x[0] && x[1]) || (x[2] && (x[0] ^ x[1])));
     let cig = builder.build(&fa_carry);
-    println!("  CIG: {} nodes, depth: {}, width: {}", cig.size(), cig.depth(), cig.interaction_width());
+    println!(
+        "  CIG: {} nodes, depth: {}, width: {}",
+        cig.size(),
+        cig.depth(),
+        cig.interaction_width()
+    );
     for line in cig.to_string().lines() {
         println!("  {}", line);
     }
@@ -54,7 +69,12 @@ fn main() {
     println!("2-bit Multiplier (a0 AND b1) XOR (a1 AND b0)");
     let mult = TruthTable::from_expr(4, |x| (x[0] && x[3]) ^ (x[1] && x[2]));
     let cig = builder.build(&mult);
-    println!("  CIG: {} nodes, depth: {}, width: {}", cig.size(), cig.depth(), cig.interaction_width());
+    println!(
+        "  CIG: {} nodes, depth: {}, width: {}",
+        cig.size(),
+        cig.depth(),
+        cig.interaction_width()
+    );
     for line in cig.to_string().lines() {
         println!("  {}", line);
     }
@@ -65,7 +85,12 @@ fn main() {
     println!("Mixed: (x1 XOR x2) AND (x3 OR x4)");
     let mixed = TruthTable::from_expr(4, |x| (x[0] ^ x[1]) && (x[2] || x[3]));
     let cig = builder.build(&mixed);
-    println!("  CIG: {} nodes, depth: {}, width: {}", cig.size(), cig.depth(), cig.interaction_width());
+    println!(
+        "  CIG: {} nodes, depth: {}, width: {}",
+        cig.size(),
+        cig.depth(),
+        cig.interaction_width()
+    );
     for line in cig.to_string().lines() {
         println!("  {}", line);
     }
@@ -79,7 +104,12 @@ fn main() {
     println!("2:1 Multiplexer: (NOT s AND a) OR (s AND b)");
     let mux = TruthTable::from_expr(3, |x| (!x[0] && x[1]) || (x[0] && x[2]));
     let cig = builder.build(&mux);
-    println!("  CIG: {} nodes, depth: {}, width: {}", cig.size(), cig.depth(), cig.interaction_width());
+    println!(
+        "  CIG: {} nodes, depth: {}, width: {}",
+        cig.size(),
+        cig.depth(),
+        cig.interaction_width()
+    );
     for line in cig.to_string().lines() {
         println!("  {}", line);
     }
@@ -90,7 +120,12 @@ fn main() {
     println!("Majority-5: True if 3+ of 5 inputs true");
     let maj_5 = TruthTable::from_expr(5, |x| x.iter().filter(|&&b| b).count() >= 3);
     let cig = builder.build(&maj_5);
-    println!("  CIG: {} nodes, depth: {}, width: {}", cig.size(), cig.depth(), cig.interaction_width());
+    println!(
+        "  CIG: {} nodes, depth: {}, width: {}",
+        cig.size(),
+        cig.depth(),
+        cig.interaction_width()
+    );
     for line in cig.to_string().lines() {
         println!("  {}", line);
     }
